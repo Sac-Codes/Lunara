@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowRight,
@@ -7,7 +7,6 @@ import {
   EyeOff,
   Info,
   Moon,
-  Shield,
   Sun,
   User,
 } from 'lucide-react';
@@ -18,29 +17,74 @@ import { LUNARA_ARTWORK } from '../lib/atmosphere';
 import { useAuth } from '../providers/AuthProvider';
 import { useLunara } from '../providers/LunaraProvider';
 
+type AuthViewMode = 'signin' | 'signup' | 'forgot';
+
 export const LoginPage: React.FC = () => {
-  const { signIn, signInPreview, rememberedEmail } = useAuth();
+  const {
+    isAuthenticated,
+    isAdmin,
+    isLoading,
+    isSupabaseEnabled,
+    signIn,
+    signUp,
+    resetPassword,
+    signInPreview,
+    rememberedEmail,
+  } = useAuth();
   const { resolvedTheme, toggleTheme, updateProfile, showToast } = useLunara();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const intendedDestination =
-    (location.state as { from?: string } | null)?.from || '/';
+  const rawIntended = (location.state as { from?: string } | null)?.from || '/';
+  const intendedDestination = rawIntended.startsWith('/login') ? '/' : rawIntended;
 
+  const [viewMode, setViewMode] = useState<AuthViewMode>('signin');
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState(rememberedEmail || '');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(Boolean(rememberedEmail));
   const [submitting, setSubmitting] = useState(false);
-  const [previewLoading, setPreviewLoading] = useState<'user' | 'admin' | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [forgotMode, setForgotMode] = useState(false);
+  const [signupNotice, setSignupNotice] = useState('');
   const [resetEmail, setResetEmail] = useState(rememberedEmail || '');
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [resetError, setResetError] = useState('');
   const [resetNoticeVisible, setResetNoticeVisible] = useState(false);
   const [bgImgError, setBgImgError] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  if (isLoading) {
+    return (
+      <div
+        className="lunara-atmosphere min-h-dvh"
+        aria-busy="true"
+        aria-label="Checking session"
+      />
+    );
+  }
+
+  if (isAuthenticated) {
+    const safeDestination =
+      !isAdmin && intendedDestination.startsWith('/admin')
+        ? '/'
+        : intendedDestination;
+    return <Navigate to={safeDestination} replace />;
+  }
+
+  const switchMode = (nextMode: AuthViewMode) => {
+    setViewMode(nextMode);
+    setErrorMessage('');
+    setSignupNotice('');
+    setResetError('');
+    setResetNoticeVisible(false);
+  };
+
+  const handleSignInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+
     setErrorMessage('');
     setSubmitting(true);
 
@@ -52,40 +96,98 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
-    const derivedName = email.split('@')[0]?.replace(/[._-]+/g, ' ').trim();
-    if (derivedName) {
-      const formatted = derivedName.charAt(0).toUpperCase() + derivedName.slice(1);
-      updateProfile({ displayName: formatted });
+    if (!isSupabaseEnabled) {
+      const derivedName = email.split('@')[0]?.replace(/[._-]+/g, ' ').trim();
+      if (derivedName) {
+        const formatted = derivedName.charAt(0).toUpperCase() + derivedName.slice(1);
+        updateProfile({ displayName: formatted });
+      }
     }
+
     showToast('Welcome back to your space.', 'lavender');
+  };
+
+  const handleSignUpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (submitting) return;
+
+    setErrorMessage('');
+    setSignupNotice('');
+
+    if (!password || password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match.');
+      return;
+    }
+
+    setSubmitting(true);
+    const result = await signUp(email, password, displayName);
+    setSubmitting(false);
+
+    if (!result.ok) {
+      setErrorMessage(result.error || 'Could not create your account. Please try again.');
+      return;
+    }
+
+    if (result.requiresEmailConfirmation) {
+      setPassword('');
+      setConfirmPassword('');
+      setSignupNotice(
+        'Your account has been created. Please check your email to confirm your address before signing in.'
+      );
+      return;
+    }
+
+    showToast('Welcome to Lunara.', 'lavender');
+  };
+
+  const handlePreviewSignIn = async () => {
+    if (previewLoading || submitting) return;
+
+    setErrorMessage('');
+    setPreviewLoading(true);
+    const result = await signInPreview();
+    setPreviewLoading(false);
+
+    if (!result.ok) {
+      setErrorMessage(result.error || 'Preview mode is unavailable right now.');
+      return;
+    }
+
+    updateProfile({ displayName: 'Sora' });
+    showToast('Entered as Member preview.', 'lavender');
     navigate(intendedDestination.startsWith('/admin') ? '/' : intendedDestination, {
       replace: true,
     });
   };
 
-  const handlePreviewSignIn = async (role: 'user' | 'admin') => {
-    setErrorMessage('');
-    setPreviewLoading(role);
-    await signInPreview(role);
-    setPreviewLoading(null);
-
-    if (role === 'admin') {
-      updateProfile({ displayName: 'Clara' });
-      showToast('Entered as Admin preview.', 'blue');
-      navigate(intendedDestination.startsWith('/admin') ? intendedDestination : '/admin', {
-        replace: true,
-      });
-    } else {
-      updateProfile({ displayName: 'Sora' });
-      showToast('Entered as Member preview.', 'lavender');
-      navigate(intendedDestination.startsWith('/admin') ? '/' : intendedDestination, {
-        replace: true,
-      });
-    }
-  };
-
-  const handleForgotSubmit = (e: React.FormEvent) => {
+  const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (resetSubmitting) return;
+
+    setResetError('');
+    setResetNoticeVisible(false);
+
+    if (!isSupabaseEnabled) {
+      setResetNoticeVisible(true);
+      return;
+    }
+
+    const trimmedEmail = resetEmail.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setResetError('Please enter a valid email address.');
+      return;
+    }
+
+    setResetSubmitting(true);
+    await resetPassword(trimmedEmail);
+    setResetSubmitting(false);
+
+    // Always display a generic confirmation message without revealing account existence.
     setResetNoticeVisible(true);
   };
 
@@ -209,7 +311,7 @@ export const LoginPage: React.FC = () => {
             </div>
           </div>
 
-          {!forgotMode ? (
+          {viewMode === 'signin' ? (
             <>
               <div>
                 <h1 className="font-display text-3xl sm:text-[34px] font-medium text-[var(--text-primary)] tracking-tight">
@@ -220,7 +322,7 @@ export const LoginPage: React.FC = () => {
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="mt-7 space-y-4" noValidate>
+              <form onSubmit={handleSignInSubmit} className="mt-7 space-y-4" noValidate>
                 <div>
                   <label
                     htmlFor="login-email"
@@ -252,8 +354,7 @@ export const LoginPage: React.FC = () => {
                       type="button"
                       onClick={() => {
                         setResetEmail(email);
-                        setResetNoticeVisible(false);
-                        setForgotMode(true);
+                        switchMode('forgot');
                       }}
                       className="text-xs font-medium text-[var(--blue-strong)] hover:underline cursor-pointer"
                     >
@@ -312,6 +413,7 @@ export const LoginPage: React.FC = () => {
                   variant="primary"
                   size="lg"
                   loading={submitting}
+                  disabled={submitting}
                   rightIcon={<ArrowRight className="w-4 h-4" />}
                   className="w-full mt-2"
                 >
@@ -319,48 +421,201 @@ export const LoginPage: React.FC = () => {
                 </Button>
               </form>
 
-              {/* Clearly isolated role preview launcher */}
+              {isSupabaseEnabled && (
+                <p className="mt-5 text-center text-xs sm:text-sm text-[var(--text-secondary)]">
+                  New to Lunara?{' '}
+                  <button
+                    type="button"
+                    onClick={() => switchMode('signup')}
+                    className="font-medium text-[var(--blue-strong)] hover:underline cursor-pointer"
+                  >
+                    Create an account
+                  </button>
+                </p>
+              )}
+
+              {/* Clearly isolated Preview Member launcher */}
               <div className="mt-8 rounded-[20px] bg-[var(--surface-blue)]/80 p-4 sm:p-5 space-y-3">
                 <div className="flex items-start gap-2.5">
                   <Info className="w-4 h-4 text-[var(--blue-strong)] shrink-0 mt-0.5" />
                   <div className="text-xs leading-relaxed text-[var(--text-secondary)]">
-                    <strong className="text-[var(--text-primary)]">Preview authentication:</strong> Backend auth is not connected yet. Sign in above as a member or preview either role below.
+                    {isSupabaseEnabled ? (
+                      <>
+                        <strong className="text-[var(--text-primary)]">Preview mode:</strong> Explore Lunara using local browser demo data, completely separate from real cloud accounts.
+                      </>
+                    ) : (
+                      <>
+                        <strong className="text-[var(--text-primary)]">Preview authentication:</strong> Backend auth is not connected yet. Sign in above or explore as a preview member below.
+                      </>
+                    )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    loading={previewLoading === 'user'}
-                    onClick={() => handlePreviewSignIn('user')}
-                    leftIcon={<User className="w-3.5 h-3.5" />}
-                    className="bg-[var(--surface-main)]/75"
-                  >
-                    Preview Member
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    loading={previewLoading === 'admin'}
-                    onClick={() => handlePreviewSignIn('admin')}
-                    leftIcon={<Shield className="w-3.5 h-3.5" />}
-                  >
-                    Preview Admin
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  loading={previewLoading}
+                  disabled={previewLoading || submitting}
+                  onClick={handlePreviewSignIn}
+                  leftIcon={<User className="w-3.5 h-3.5" />}
+                  className="w-full bg-[var(--surface-main)]/75"
+                >
+                  Preview Member
+                </Button>
               </div>
             </>
+          ) : viewMode === 'signup' ? (
+            <>
+              <div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => switchMode('signin')}
+                  leftIcon={<ArrowLeft className="w-4 h-4" />}
+                  className="-ml-2 mb-4"
+                >
+                  Back to sign in
+                </Button>
+
+                <h1 className="font-display text-3xl sm:text-[34px] font-medium text-[var(--text-primary)] tracking-tight">
+                  Create your space.
+                </h1>
+                <p className="mt-2 text-sm sm:text-base text-[var(--text-secondary)]">
+                  Begin your quiet daily reflection practice.
+                </p>
+              </div>
+
+              <form onSubmit={handleSignUpSubmit} className="mt-7 space-y-4" noValidate>
+                <div>
+                  <label
+                    htmlFor="signup-name"
+                    className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5"
+                  >
+                    Display name
+                  </label>
+                  <input
+                    id="signup-name"
+                    type="text"
+                    autoComplete="name"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="How you'd like to be greeted"
+                    className="w-full min-h-[48px] rounded-[14px] bg-[var(--surface-main)] border border-[var(--border-medium)] px-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-2 focus:outline-[#B18ACD]"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="signup-email"
+                    className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5"
+                  >
+                    Email address
+                  </label>
+                  <input
+                    id="signup-email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full min-h-[48px] rounded-[14px] bg-[var(--surface-main)] border border-[var(--border-medium)] px-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-2 focus:outline-[#B18ACD]"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="signup-password"
+                    className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5"
+                  >
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="signup-password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="At least 6 characters"
+                      className="w-full min-h-[48px] rounded-[14px] bg-[var(--surface-main)] border border-[var(--border-medium)] pl-4 pr-12 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-2 focus:outline-[#B18ACD]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="signup-confirm-password"
+                    className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5"
+                  >
+                    Confirm password
+                  </label>
+                  <input
+                    id="signup-confirm-password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your password"
+                    className="w-full min-h-[48px] rounded-[14px] bg-[var(--surface-main)] border border-[var(--border-medium)] px-4 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-2 focus:outline-[#B18ACD]"
+                  />
+                </div>
+
+                {errorMessage && (
+                  <div
+                    role="alert"
+                    className="rounded-[14px] bg-[var(--surface-coral)] px-4 py-3 text-xs sm:text-sm text-[var(--coral-strong)]"
+                  >
+                    {errorMessage}
+                  </div>
+                )}
+
+                {signupNotice && (
+                  <div
+                    role="status"
+                    className="rounded-[14px] bg-[var(--surface-teal)] px-4 py-3 text-xs sm:text-sm text-[var(--teal-strong)] leading-relaxed"
+                  >
+                    {signupNotice}
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  loading={submitting}
+                  disabled={submitting}
+                  rightIcon={<ArrowRight className="w-4 h-4" />}
+                  className="w-full mt-2"
+                >
+                  Create account
+                </Button>
+              </form>
+            </>
           ) : (
-            /* Honest Forgot Password UI flow */
+            /* Forgot Password Request flow */
             <div>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setForgotMode(false)}
+                onClick={() => switchMode('signin')}
                 leftIcon={<ArrowLeft className="w-4 h-4" />}
                 className="-ml-2 mb-4"
               >
@@ -371,10 +626,12 @@ export const LoginPage: React.FC = () => {
                 Reset password
               </h1>
               <p className="mt-2 text-sm text-[var(--text-secondary)] leading-relaxed">
-                Enter your account email below to check password recovery availability.
+                {isSupabaseEnabled
+                  ? 'Enter your email address and we will send you a link to reset your password.'
+                  : 'Enter your account email below to check password recovery availability.'}
               </p>
 
-              <form onSubmit={handleForgotSubmit} className="mt-6 space-y-4">
+              <form onSubmit={handleForgotSubmit} className="mt-6 space-y-4" noValidate>
                 <div>
                   <label
                     htmlFor="reset-email"
@@ -393,14 +650,39 @@ export const LoginPage: React.FC = () => {
                   />
                 </div>
 
-                <Button type="submit" variant="secondary" size="lg" className="w-full">
-                  Continue
+                {resetError && (
+                  <div
+                    role="alert"
+                    className="rounded-[14px] bg-[var(--surface-coral)] px-4 py-3 text-xs sm:text-sm text-[var(--coral-strong)]"
+                  >
+                    {resetError}
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  size="lg"
+                  loading={resetSubmitting}
+                  disabled={resetSubmitting}
+                  className="w-full"
+                >
+                  {isSupabaseEnabled ? 'Send reset link' : 'Continue'}
                 </Button>
               </form>
 
               {resetNoticeVisible && (
-                <div className="mt-5 rounded-[16px] bg-[var(--surface-amber)] p-4 text-sm text-[var(--amber-strong)] leading-relaxed">
-                  Password recovery emails require backend authentication (planned with Supabase Auth) and are not active in this local preview. Return to Sign in to continue exploring Lunara.
+                <div
+                  role="status"
+                  className={`mt-5 rounded-[16px] p-4 text-sm leading-relaxed ${
+                    isSupabaseEnabled
+                      ? 'bg-[var(--surface-teal)] text-[var(--teal-strong)]'
+                      : 'bg-[var(--surface-amber)] text-[var(--amber-strong)]'
+                  }`}
+                >
+                  {isSupabaseEnabled
+                    ? 'If an account exists for that email address, a password reset link has been sent.'
+                    : 'Password recovery emails require backend authentication (planned with Supabase Auth) and are not active in this local preview. Return to Sign in to continue exploring Lunara.'}
                 </div>
               )}
             </div>

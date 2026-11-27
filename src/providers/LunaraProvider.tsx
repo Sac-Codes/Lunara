@@ -1,10 +1,16 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildSampleJourney,
   DEFAULT_ADMIN_CONFIG,
   DEFAULT_CHECKIN_PARAMETERS,
 } from '../data/sampleJourney';
-import { DEFAULT_NOTIFICATION_PREFS } from '../data/wisdomAndAffirmations';
+import {
+  DEFAULT_AFFIRMATIONS,
+  DEFAULT_ANNOUNCEMENTS,
+  DEFAULT_NOTIFICATION_PREFS,
+  DEFAULT_REFLECTION_PROMPTS,
+  DEFAULT_WISDOM_ENTRIES,
+} from '../data/wisdomAndAffirmations';
 import { lunaraStorage } from '../lib/storage';
 import { useAuth } from './AuthProvider';
 import type {
@@ -31,7 +37,20 @@ export interface ToastMessage {
   tone?: 'lavender' | 'teal' | 'blue' | 'rose' | 'amber';
 }
 
+export type LunaraDataMode = 'transition' | 'demo' | 'authenticated';
+
+const EMPTY_PROFILE: UserProfile = {
+  displayName: '',
+  preferredCheckInTime: 'evening',
+  dailyReminderEnabled: false,
+  reminderTime: '20:30',
+  showGreetingPrompts: true,
+};
+
 interface LunaraContextValue {
+  dataMode: LunaraDataMode;
+  isDataReady: boolean;
+
   themeMode: ThemeMode;
   resolvedTheme: 'light' | 'dark';
   setThemeMode: (mode: ThemeMode) => void;
@@ -130,7 +149,21 @@ interface LunaraContextValue {
 const LunaraContext = createContext<LunaraContextValue | null>(null);
 
 export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
+
+  const dataMode: LunaraDataMode = useMemo(() => {
+    if (isAuthLoading || !user) return 'transition';
+    return user.authMode === 'supabase' ? 'authenticated' : 'demo';
+  }, [isAuthLoading, user]);
+
+  const targetContextKey = useMemo(() => {
+    if (isAuthLoading) return 'auth-loading';
+    if (!user) return 'signed-out';
+    return user.authMode === 'supabase' ? `auth:${user.id}` : `demo:${user.id}`;
+  }, [isAuthLoading, user]);
+
+  const [hydratedContextKey, setHydratedContextKey] = useState<string>('');
+  const contextVersionRef = useRef(0);
 
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => lunaraStorage.getTheme());
   const [systemDark, setSystemDark] = useState<boolean>(() =>
@@ -139,47 +172,115 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       : true
   );
 
-  const [checkIns, setCheckIns] = useState<CheckInEntry[]>(() => lunaraStorage.getCheckIns());
-  const [journals, setJournals] = useState<JournalEntry[]>(() => lunaraStorage.getJournals());
-  const [profile, setProfile] = useState<UserProfile>(() => lunaraStorage.getProfile());
-  const [parameters, setParameters] = useState<CheckInParameterConfig[]>(() =>
-    lunaraStorage.getParameters()
-  );
-  const [adminConfig, setAdminConfig] = useState<AdminSystemConfig>(() =>
-    lunaraStorage.getAdminConfig()
-  );
+  // Initialize user-specific state strictly empty/default so legacy localStorage
+  // is never exposed before auth context resolves or in authenticated mode.
+  const [checkIns, setCheckIns] = useState<CheckInEntry[]>([]);
+  const [journals, setJournals] = useState<JournalEntry[]>([]);
+  const [profile, setProfile] = useState<UserProfile>(EMPTY_PROFILE);
+  const [parameters, setParameters] = useState<CheckInParameterConfig[]>(DEFAULT_CHECKIN_PARAMETERS);
+  const [adminConfig, setAdminConfig] = useState<AdminSystemConfig>(DEFAULT_ADMIN_CONFIG);
 
-  const [affirmations, setAffirmations] = useState<AffirmationItem[]>(() =>
-    lunaraStorage.getAffirmations()
-  );
-  const [favoriteAffirmationIds, setFavoriteAffirmationIds] = useState<string[]>(() =>
-    lunaraStorage.getFavoriteAffirmationIds()
-  );
-  const [wisdomEntries, setWisdomEntries] = useState<WisdomEntry[]>(() =>
-    lunaraStorage.getWisdomEntries()
-  );
-  const [savedWisdomIds, setSavedWisdomIds] = useState<string[]>(() =>
-    lunaraStorage.getSavedWisdomIds()
-  );
-  const [reflectionPrompts, setReflectionPrompts] = useState<ReflectionPromptItem[]>(() =>
-    lunaraStorage.getReflectionPrompts()
-  );
-  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(() =>
-    lunaraStorage.getAnnouncements()
-  );
-  const [notifications, setNotifications] = useState<UserNotification[]>(() =>
-    lunaraStorage.getNotifications()
-  );
-  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>(() =>
-    lunaraStorage.getNotificationPrefs()
-  );
-  const [adminUsers, setAdminUsers] = useState<AdminUserPrototype[]>(() =>
-    lunaraStorage.getAdminUsers()
-  );
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() =>
-    lunaraStorage.getAuditLogs()
-  );
+  const [affirmations, setAffirmations] = useState<AffirmationItem[]>(DEFAULT_AFFIRMATIONS);
+  const [favoriteAffirmationIds, setFavoriteAffirmationIds] = useState<string[]>([]);
+  const [wisdomEntries, setWisdomEntries] = useState<WisdomEntry[]>(DEFAULT_WISDOM_ENTRIES);
+  const [savedWisdomIds, setSavedWisdomIds] = useState<string[]>([]);
+  const [reflectionPrompts, setReflectionPrompts] =
+    useState<ReflectionPromptItem[]>(DEFAULT_REFLECTION_PROMPTS);
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(DEFAULT_ANNOUNCEMENTS);
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
+  const [notificationPrefs, setNotificationPrefs] =
+    useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFS);
+  const [adminUsers, setAdminUsers] = useState<AdminUserPrototype[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  // Isolate and reset user-specific state on every auth context transition.
+  useEffect(() => {
+    const version = ++contextVersionRef.current;
+
+    if (isAuthLoading) {
+      setCheckIns([]);
+      setJournals([]);
+      setProfile(EMPTY_PROFILE);
+      setSavedWisdomIds([]);
+      setFavoriteAffirmationIds([]);
+      setNotifications([]);
+      setNotificationPrefs(DEFAULT_NOTIFICATION_PREFS);
+      setAdminUsers([]);
+      setAuditLogs([]);
+      return;
+    }
+
+    if (!user) {
+      setCheckIns([]);
+      setJournals([]);
+      setProfile(EMPTY_PROFILE);
+      setParameters(DEFAULT_CHECKIN_PARAMETERS);
+      setAdminConfig(DEFAULT_ADMIN_CONFIG);
+      setAffirmations(DEFAULT_AFFIRMATIONS);
+      setFavoriteAffirmationIds([]);
+      setWisdomEntries(DEFAULT_WISDOM_ENTRIES);
+      setSavedWisdomIds([]);
+      setReflectionPrompts(DEFAULT_REFLECTION_PROMPTS);
+      setAnnouncements(DEFAULT_ANNOUNCEMENTS);
+      setNotifications([]);
+      setNotificationPrefs(DEFAULT_NOTIFICATION_PREFS);
+      setAdminUsers([]);
+      setAuditLogs([]);
+      if (version === contextVersionRef.current) {
+        setHydratedContextKey(targetContextKey);
+      }
+      return;
+    }
+
+    if (user.authMode === 'supabase') {
+      // Authenticated mode: strictly isolate from legacy global localStorage.
+      setCheckIns([]);
+      setJournals([]);
+      setProfile({
+        ...EMPTY_PROFILE,
+        displayName: user.name,
+      });
+      setParameters(DEFAULT_CHECKIN_PARAMETERS);
+      setAdminConfig(DEFAULT_ADMIN_CONFIG);
+      setAffirmations(DEFAULT_AFFIRMATIONS);
+      setFavoriteAffirmationIds([]);
+      setWisdomEntries(DEFAULT_WISDOM_ENTRIES);
+      setSavedWisdomIds([]);
+      setReflectionPrompts(DEFAULT_REFLECTION_PROMPTS);
+      setAnnouncements([]);
+      setNotifications([]);
+      setNotificationPrefs(DEFAULT_NOTIFICATION_PREFS);
+      setAdminUsers([]);
+      setAuditLogs([]);
+      if (version === contextVersionRef.current) {
+        setHydratedContextKey(targetContextKey);
+      }
+      return;
+    }
+
+    // Demo / preview mode: load legacy localStorage sandbox.
+    setCheckIns(lunaraStorage.getCheckIns());
+    setJournals(lunaraStorage.getJournals());
+    setProfile(lunaraStorage.getProfile());
+    setParameters(lunaraStorage.getParameters());
+    setAdminConfig(lunaraStorage.getAdminConfig());
+    setAffirmations(lunaraStorage.getAffirmations());
+    setFavoriteAffirmationIds(lunaraStorage.getFavoriteAffirmationIds());
+    setWisdomEntries(lunaraStorage.getWisdomEntries());
+    setSavedWisdomIds(lunaraStorage.getSavedWisdomIds());
+    setReflectionPrompts(lunaraStorage.getReflectionPrompts());
+    setAnnouncements(lunaraStorage.getAnnouncements());
+    setNotifications(lunaraStorage.getNotifications());
+    setNotificationPrefs(lunaraStorage.getNotificationPrefs());
+    setAdminUsers(lunaraStorage.getAdminUsers());
+    setAuditLogs(lunaraStorage.getAuditLogs());
+    if (version === contextVersionRef.current) {
+      setHydratedContextKey(targetContextKey);
+    }
+  }, [isAuthLoading, user, targetContextKey]);
+
+  const isDataReady = !isAuthLoading && hydratedContextKey === targetContextKey;
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -229,8 +330,20 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [dismissToast]
   );
 
+  const guardDemoOnlyMutation = useCallback(
+    (notifyInAuth = true): boolean => {
+      if (dataMode === 'demo') return true;
+      if (dataMode === 'authenticated' && notifyInAuth) {
+        showToast('Cloud sync for personal entries is coming in the next step.', 'blue');
+      }
+      return false;
+    },
+    [dataMode, showToast]
+  );
+
   const appendAuditLog = useCallback(
     (action: string, details: string, targetUserName?: string) => {
+      if (dataMode !== 'demo') return;
       const entry: AuditLogEntry = {
         id: `aud-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         timestamp: new Date().toISOString(),
@@ -246,12 +359,19 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return next;
       });
     },
-    [user]
+    [dataMode, user]
   );
 
   const saveCheckIn = useCallback(
     (entry: Omit<CheckInEntry, 'id' | 'updatedAt'> & { id?: string }) => {
       const now = new Date().toISOString();
+      if (!guardDemoOnlyMutation()) {
+        return {
+          ...entry,
+          id: entry.id || `ci-${entry.date}`,
+          updatedAt: now,
+        };
+      }
       let savedRecord: CheckInEntry | null = null;
       setCheckIns((prev) => {
         const existing = prev.find((c) => c.date === entry.date);
@@ -277,16 +397,20 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       );
     },
-    []
+    [guardDemoOnlyMutation]
   );
 
-  const deleteCheckIn = useCallback((dateKey: string) => {
-    setCheckIns((prev) => {
-      const next = prev.filter((c) => c.date !== dateKey);
-      lunaraStorage.setCheckIns(next);
-      return next;
-    });
-  }, []);
+  const deleteCheckIn = useCallback(
+    (dateKey: string) => {
+      if (!guardDemoOnlyMutation()) return;
+      setCheckIns((prev) => {
+        const next = prev.filter((c) => c.date !== dateKey);
+        lunaraStorage.setCheckIns(next);
+        return next;
+      });
+    },
+    [guardDemoOnlyMutation]
+  );
 
   const getCheckInByDate = useCallback(
     (dateKey: string) => checkIns.find((c) => c.date === dateKey),
@@ -296,6 +420,14 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const saveJournal = useCallback(
     (entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => {
       const now = new Date().toISOString();
+      if (!guardDemoOnlyMutation()) {
+        return {
+          ...entry,
+          id: entry.id || `jr-${Date.now()}`,
+          createdAt: now,
+          updatedAt: now,
+        };
+      }
       let savedRecord: JournalEntry | null = null;
       setJournals((prev) => {
         const existing = entry.id ? prev.find((j) => j.id === entry.id) : undefined;
@@ -323,36 +455,46 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       );
     },
-    []
+    [guardDemoOnlyMutation]
   );
 
-  const deleteJournal = useCallback((id: string) => {
-    setJournals((prev) => {
-      const next = prev.filter((j) => j.id !== id);
-      lunaraStorage.setJournals(next);
-      return next;
-    });
-  }, []);
+  const deleteJournal = useCallback(
+    (id: string) => {
+      if (!guardDemoOnlyMutation()) return;
+      setJournals((prev) => {
+        const next = prev.filter((j) => j.id !== id);
+        lunaraStorage.setJournals(next);
+        return next;
+      });
+    },
+    [guardDemoOnlyMutation]
+  );
 
-  const updateProfile = useCallback((patch: Partial<UserProfile>) => {
-    setProfile((prev) => {
-      const next = { ...prev, ...patch };
-      lunaraStorage.setProfile(next);
-      return next;
-    });
-  }, []);
+  const updateProfile = useCallback(
+    (patch: Partial<UserProfile>) => {
+      if (!guardDemoOnlyMutation()) return;
+      setProfile((prev) => {
+        const next = { ...prev, ...patch };
+        lunaraStorage.setProfile(next);
+        return next;
+      });
+    },
+    [guardDemoOnlyMutation]
+  );
 
   const updateParameters = useCallback(
     (next: CheckInParameterConfig[]) => {
+      if (!guardDemoOnlyMutation()) return;
       setParameters(next);
       lunaraStorage.setParameters(next);
       appendAuditLog('Updated Parameters', `Updated check-in parameter configuration (${next.filter((p) => p.enabled).length} active).`);
     },
-    [appendAuditLog]
+    [guardDemoOnlyMutation, appendAuditLog]
   );
 
   const updateAdminConfig = useCallback(
     (patch: Partial<AdminSystemConfig>) => {
+      if (!guardDemoOnlyMutation()) return;
       setAdminConfig((prev) => {
         const next = { ...prev, ...patch };
         lunaraStorage.setAdminConfig(next);
@@ -360,7 +502,7 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
       appendAuditLog('Updated Workspace Config', 'Modified workspace configuration settings.');
     },
-    [appendAuditLog]
+    [guardDemoOnlyMutation, appendAuditLog]
   );
 
   // Affirmations
@@ -372,13 +514,17 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [affirmations]
   );
 
-  const toggleFavoriteAffirmation = useCallback((id: string) => {
-    setFavoriteAffirmationIds((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      lunaraStorage.setFavoriteAffirmationIds(next);
-      return next;
-    });
-  }, []);
+  const toggleFavoriteAffirmation = useCallback(
+    (id: string) => {
+      if (!guardDemoOnlyMutation()) return;
+      setFavoriteAffirmationIds((prev) => {
+        const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+        lunaraStorage.setFavoriteAffirmationIds(next);
+        return next;
+      });
+    },
+    [guardDemoOnlyMutation]
+  );
 
   const addAffirmation = useCallback(
     (item: Omit<AffirmationItem, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => {
@@ -513,13 +659,17 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [appendAuditLog]
   );
 
-  const toggleBookmarkWisdom = useCallback((id: string) => {
-    setSavedWisdomIds((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      lunaraStorage.setSavedWisdomIds(next);
-      return next;
-    });
-  }, []);
+  const toggleBookmarkWisdom = useCallback(
+    (id: string) => {
+      if (!guardDemoOnlyMutation()) return;
+      setSavedWisdomIds((prev) => {
+        const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+        lunaraStorage.setSavedWisdomIds(next);
+        return next;
+      });
+    },
+    [guardDemoOnlyMutation]
+  );
 
   // Reflection Prompts
   const savePrompt = useCallback(
@@ -628,37 +778,50 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [appendAuditLog]
   );
 
-  const markNotificationRead = useCallback((id: string, read = true) => {
-    setNotifications((prev) => {
-      const next = prev.map((n) => (n.id === id ? { ...n, read } : n));
-      lunaraStorage.setNotifications(next);
-      return next;
-    });
-  }, []);
+  const markNotificationRead = useCallback(
+    (id: string, read = true) => {
+      if (!guardDemoOnlyMutation()) return;
+      setNotifications((prev) => {
+        const next = prev.map((n) => (n.id === id ? { ...n, read } : n));
+        lunaraStorage.setNotifications(next);
+        return next;
+      });
+    },
+    [guardDemoOnlyMutation]
+  );
 
   const markAllNotificationsRead = useCallback(() => {
+    if (!guardDemoOnlyMutation()) return;
     setNotifications((prev) => {
       const next = prev.map((n) => ({ ...n, read: true }));
       lunaraStorage.setNotifications(next);
       return next;
     });
-  }, []);
+  }, [guardDemoOnlyMutation]);
 
-  const deleteNotification = useCallback((id: string) => {
-    setNotifications((prev) => {
-      const next = prev.filter((n) => n.id !== id);
-      lunaraStorage.setNotifications(next);
-      return next;
-    });
-  }, []);
+  const deleteNotification = useCallback(
+    (id: string) => {
+      if (!guardDemoOnlyMutation()) return;
+      setNotifications((prev) => {
+        const next = prev.filter((n) => n.id !== id);
+        lunaraStorage.setNotifications(next);
+        return next;
+      });
+    },
+    [guardDemoOnlyMutation]
+  );
 
-  const updateNotificationPrefs = useCallback((patch: Partial<NotificationPreferences>) => {
-    setNotificationPrefs((prev) => {
-      const next = { ...prev, ...patch };
-      lunaraStorage.setNotificationPrefs(next);
-      return next;
-    });
-  }, []);
+  const updateNotificationPrefs = useCallback(
+    (patch: Partial<NotificationPreferences>) => {
+      if (!guardDemoOnlyMutation()) return;
+      setNotificationPrefs((prev) => {
+        const next = { ...prev, ...patch };
+        lunaraStorage.setNotificationPrefs(next);
+        return next;
+      });
+    },
+    [guardDemoOnlyMutation]
+  );
 
   const unreadNotificationCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
@@ -712,6 +875,7 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 
   const loadSampleJourney = useCallback(() => {
+    if (!guardDemoOnlyMutation()) return;
     const sample = buildSampleJourney();
     setCheckIns((prev) => {
       const nonSample = prev.filter((c) => !c.isSample);
@@ -734,9 +898,10 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return merged;
     });
     showToast('Sample week added so you can explore Lunara.', 'blue');
-  }, [showToast]);
+  }, [guardDemoOnlyMutation, showToast]);
 
   const clearSampleJourney = useCallback(() => {
+    if (!guardDemoOnlyMutation()) return;
     setCheckIns((prev) => {
       const next = prev.filter((c) => !c.isSample);
       lunaraStorage.setCheckIns(next);
@@ -748,29 +913,26 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return next;
     });
     showToast('Sample entries removed.', 'lavender');
-  }, [showToast]);
+  }, [guardDemoOnlyMutation, showToast]);
 
   const clearAllData = useCallback(() => {
+    if (!guardDemoOnlyMutation()) return;
     lunaraStorage.clearAll();
     setCheckIns([]);
     setJournals([]);
-    setProfile({
-      displayName: '',
-      preferredCheckInTime: 'evening',
-      dailyReminderEnabled: false,
-      reminderTime: '20:30',
-      showGreetingPrompts: true,
-    });
+    setProfile(EMPTY_PROFILE);
     setParameters(DEFAULT_CHECKIN_PARAMETERS);
     setAdminConfig(DEFAULT_ADMIN_CONFIG);
     setSavedWisdomIds([]);
     setFavoriteAffirmationIds([]);
     setNotificationPrefs(DEFAULT_NOTIFICATION_PREFS);
     showToast('Local reflections cleared.', 'lavender');
-  }, [showToast]);
+  }, [guardDemoOnlyMutation, showToast]);
 
   const value = useMemo<LunaraContextValue>(
     () => ({
+      dataMode,
+      isDataReady,
       themeMode,
       resolvedTheme,
       setThemeMode,
@@ -832,6 +994,8 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       dismissToast,
     }),
     [
+      dataMode,
+      isDataReady,
       themeMode,
       resolvedTheme,
       setThemeMode,

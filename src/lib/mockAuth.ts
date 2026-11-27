@@ -1,4 +1,4 @@
-import type { AuthUser, UserRole } from '../types/lunara';
+import type { AuthUser } from '../types/lunara';
 
 const REMEMBERED_EMAIL_KEY = 'lunara_remembered_email';
 
@@ -80,18 +80,8 @@ export const mockAuthService = {
     };
   },
 
-  async signInPreviewRole(role: UserRole): Promise<AuthUser> {
+  async signInPreviewMember(): Promise<AuthUser> {
     await new Promise((resolve) => window.setTimeout(resolve, 260));
-
-    if (role === 'admin') {
-      return {
-        id: 'sim-preview-admin',
-        name: 'Clara Lin',
-        email: 'admin.preview@lunara.local',
-        role: 'admin',
-        authMode: 'simulated-preview',
-      };
-    }
 
     return {
       id: 'sim-preview-user',

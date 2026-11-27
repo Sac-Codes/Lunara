@@ -40,6 +40,7 @@ const SECTIONS: Array<{ id: SettingsSection; label: string; icon: typeof User }>
 
 export const SettingsPage: React.FC = () => {
   const {
+    dataMode,
     themeMode,
     setThemeMode,
     profile,
@@ -62,6 +63,10 @@ export const SettingsPage: React.FC = () => {
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   const handleExport = () => {
+    if (dataMode !== 'demo') {
+      showToast('Export is disabled until cloud reflection sync is enabled.', 'amber');
+      return;
+    }
     const json = lunaraStorage.exportJSON();
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);

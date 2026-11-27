@@ -7,7 +7,7 @@ export interface AuthUser {
   name: string;
   email: string;
   role: UserRole;
-  authMode: 'simulated-credentials' | 'simulated-preview';
+  authMode: 'supabase' | 'simulated-credentials' | 'simulated-preview';
 }
 
 export type MoodId = 'great' | 'good' | 'okay' | 'low' | 'difficult' | 'unsure';

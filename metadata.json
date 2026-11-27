@@ -1,0 +1,6 @@
+{
+  "name": "Lunara",
+  "description": "A calm, personal daily reflection and self-awareness PWA. A little more thoughtful, every day.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

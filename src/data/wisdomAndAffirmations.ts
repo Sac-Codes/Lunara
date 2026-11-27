@@ -1,0 +1,568 @@
+import { addDays, toDateKey } from '../lib/date';
+import type {
+  AdminUserPrototype,
+  AffirmationCategory,
+  AffirmationItem,
+  AnnouncementItem,
+  AuditLogEntry,
+  NotificationPreferences,
+  ReflectionPromptItem,
+  UserNotification,
+  WisdomEntry,
+  WisdomTopic,
+} from '../types/lunara';
+
+export const AFFIRMATION_CATEGORIES: AffirmationCategory[] = [
+  'Calm',
+  'Encouragement',
+  'Self-acceptance',
+  'Patience',
+  'Courage',
+  'Reflection',
+  'Gratitude',
+  'Hope',
+  'Rest',
+  'Beginning again',
+];
+
+export const WISDOM_TOPICS: WisdomTopic[] = [
+  'Duty & Action',
+  'Inner Balance',
+  'Patience',
+  'Self-Understanding',
+  'Courage',
+  'Detachment',
+  'Compassion',
+];
+
+const NOW = '2026-11-26T08:00:00.000Z';
+
+export const DEFAULT_AFFIRMATIONS: AffirmationItem[] = [
+  {
+    id: 'aff-1',
+    text: "You don't have to figure everything out today.",
+    category: 'Calm',
+    status: 'published',
+    createdAt: NOW,
+    updatedAt: NOW,
+    createdBy: 'Lunara Editorial',
+    priority: 1,
+  },
+  {
+    id: 'aff-2',
+    text: 'A small pause is still progress.',
+    category: 'Rest',
+    status: 'published',
+    createdAt: NOW,
+    updatedAt: NOW,
+    createdBy: 'Lunara Editorial',
+    priority: 2,
+  },
+  {
+    id: 'aff-3',
+    text: 'Your feelings deserve space, not judgment.',
+    category: 'Self-acceptance',
+    status: 'published',
+    createdAt: NOW,
+    updatedAt: NOW,
+    createdBy: 'Lunara Editorial',
+    priority: 3,
+  },
+  {
+    id: 'aff-4',
+    text: "It's okay to take things one step at a time.",
+    category: 'Patience',
+    status: 'published',
+    createdAt: NOW,
+    updatedAt: NOW,
+    createdBy: 'Lunara Editorial',
+    priority: 4,
+  },
+  {
+    id: 'aff-5',
+    text: 'You can begin again without explaining yesterday.',
+    category: 'Beginning again',
+    status: 'published',
+    createdAt: NOW,
+    updatedAt: NOW,
+    createdBy: 'Lunara Editorial',
+    priority: 5,
+  },
+  {
+    id: 'aff-6',
+    text: 'Not every day needs to be extraordinary.',
+    category: 'Self-acceptance',
+    status: 'published',
+    createdAt: NOW,
+    updatedAt: NOW,
+    createdBy: 'Lunara Editorial',
+    priority: 6,
+  },
+  {
+    id: 'aff-7',
+    text: 'You are allowed to take your time.',
+    category: 'Patience',
+    status: 'published',
+    createdAt: NOW,
+    updatedAt: NOW,
+    createdBy: 'Lunara Editorial',
+    priority: 7,
+  },
+  {
+    id: 'aff-8',
+    text: "One difficult moment doesn't define your entire day.",
+    category: 'Encouragement',
+    status: 'published',
+    createdAt: NOW,
+    updatedAt: NOW,
+    createdBy: 'Lunara Editorial',
+    priority: 8,
+  },
+  {
+    id: 'aff-9',
+    text: 'There is value in simply noticing how you feel.',
+    category: 'Reflection',
+    status: 'published',
+    createdAt: NOW,
+    updatedAt: NOW,
+    createdBy: 'Lunara Editorial',
+    priority: 9,
+  },
+  {
+    id: 'aff-10',
+    text: "You don't need to have all the answers right now.",
+    category: 'Hope',
+    status: 'published',
+    createdAt: NOW,
+    updatedAt: NOW,
+    createdBy: 'Lunara Editorial',
+    priority: 10,
+  },
+  {
+    id: 'aff-11',
+    text: 'Rest and reflection are worthwhile, too.',
+    category: 'Rest',
+    status: 'published',
+    createdAt: NOW,
+    updatedAt: NOW,
+    createdBy: 'Lunara Editorial',
+    priority: 11,
+  },
+  {
+    id: 'aff-12',
+    text: 'Be patient with the parts of life still unfolding.',
+    category: 'Courage',
+    status: 'published',
+    createdAt: NOW,
+    updatedAt: NOW,
+    createdBy: 'Lunara Editorial',
+    priority: 12,
+  },
+];
+
+export const DEFAULT_WISDOM_ENTRIES: WisdomEntry[] = [
+  {
+    id: 'gita-2-47',
+    title: 'Sincere effort over fixation on outcome',
+    scripture: 'Bhagavad Gita',
+    chapter: 2,
+    verse: '47',
+    sanskrit: 'कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥',
+    transliteration:
+      "Karmaṇy-evādhikāras te mā phaleṣu kadācana;\nmā karma-phala-hetur bhūr mā te saṅgo 'stv akarmaṇi.",
+    meaning:
+      'Your rightful sphere is action itself, never clinging to its fruits. Let not the reward of action be your sole motive, nor let yourself drift into inaction.',
+    learning:
+      'Focus on the sincerity and care of what you are doing right now, rather than letting anxiety over the final result consume your attention.',
+    reflectionPrompt:
+      'What is one thing you can give your calm attention to today without trying to control how it turns out?',
+    takeaway: 'Give your effort fully. Let the outcome unfold.',
+    topic: 'Duty & Action',
+    sourceNote: 'Verified Sanskrit text from Bhagavad Gita Chapter 2, Verse 47; original Lunara reflection.',
+    status: 'published',
+    isFeatured: true,
+    isDaily: true,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'gita-2-48',
+    title: 'Steadiness through ups and downs',
+    scripture: 'Bhagavad Gita',
+    chapter: 2,
+    verse: '48',
+    sanskrit: 'योगस्थः कुरु कर्माणि सङ्गं त्यक्त्वा धनञ्जय।\nसिद्ध्यसिद्ध्योः समो भूत्वा समत्वं योग उच्यते॥',
+    transliteration:
+      'Yogasthaḥ kuru karmāṇi saṅgaṁ tyaktvā dhanañjaya;\nsiddhy-asiddhyoḥ samo bhūtvā samatvaṁ yoga ucyate.',
+    meaning:
+      'Act while remaining grounded, letting go of anxious attachment. Remaining even-minded in both success and setback is called steadiness of mind.',
+    learning:
+      'Inner balance does not mean feeling nothing—it means staying anchored in yourself whether a day feels smooth or uncertain.',
+    reflectionPrompt:
+      'Where could a little steadiness soften the pressure you feel around succeeding or falling short?',
+    takeaway: 'Even-mindedness is a quiet form of strength.',
+    topic: 'Inner Balance',
+    sourceNote: 'Verified Sanskrit text from Bhagavad Gita Chapter 2, Verse 48; original Lunara reflection.',
+    status: 'published',
+    isFeatured: false,
+    isDaily: false,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'gita-2-14',
+    title: 'Seasons of feeling come and pass',
+    scripture: 'Bhagavad Gita',
+    chapter: 2,
+    verse: '14',
+    sanskrit: 'मात्रास्पर्शास्तु कौन्तेय शीतोष्णसुखदुःखदाः।\nआगमापायिनोऽनित्यास्तांस्तितिक्षस्व भारत॥',
+    transliteration:
+      "Mātrā-sparśās tu kaunteya śītoṣṇa-sukha-duḥkhadāḥ;\nāgamāpāyino 'nityās tāṁs titikṣasva bhārata.",
+    meaning:
+      'Contacts with the senses bring heat and cold, pleasure and discomfort. They come and go and are impermanent; learn to endure them with patience.',
+    learning:
+      'Difficult moods and bright moods alike move through us like weather. Patience means letting a passing season pass without judging yourself for feeling it.',
+    reflectionPrompt:
+      'Is there a discomfort today that feels permanent only because you are right in the middle of it?',
+    takeaway: 'Every feeling is weather passing through.',
+    topic: 'Patience',
+    sourceNote: 'Verified Sanskrit text from Bhagavad Gita Chapter 2, Verse 14; original Lunara reflection.',
+    status: 'published',
+    isFeatured: false,
+    isDaily: false,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'gita-6-5',
+    title: 'Becoming a gentle friend to yourself',
+    scripture: 'Bhagavad Gita',
+    chapter: 6,
+    verse: '5',
+    sanskrit: 'उद्धरेदात्मनात्मानं नात्मानमवसादयेत्।\nआत्मैव ह्यात्मनो बन्धुरात्मैव रिपुरात्मनः॥',
+    transliteration:
+      'Uddhared ātmanātmānaṁ nātmānam avasādayet;\nātmaiva hy ātmano bandhur ātmaiva ripur ātmanaḥ.',
+    meaning:
+      'Lift yourself by your own steadiness and do not pull yourself down. Indeed, the self can be one’s own truest friend, or one’s own harshest critic.',
+    learning:
+      'The way we speak to ourselves inside our own thoughts shapes our peace far more than external noise does.',
+    reflectionPrompt:
+      'How would you speak to a close friend experiencing the exact day you are having right now?',
+    takeaway: 'Meet yourself with the kindness of a friend.',
+    topic: 'Self-Understanding',
+    sourceNote: 'Verified Sanskrit text from Bhagavad Gita Chapter 6, Verse 5; original Lunara reflection.',
+    status: 'published',
+    isFeatured: false,
+    isDaily: false,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'gita-6-35',
+    title: 'Training a restless mind gently',
+    scripture: 'Bhagavad Gita',
+    chapter: 6,
+    verse: '35',
+    sanskrit: 'असंशयं महाबाहो मनो दुर्निग्रहं चलम्।\nअभ्यासेन तु कौन्तेय वैराग्येण च गृह्यते॥',
+    transliteration:
+      'Asaṁśayaṁ mahā-bāho mano durnigrahaṁ calam;\nabhyāsena tu kaunteya vairāgyeṇa ca gṛhyate.',
+    meaning:
+      'Without doubt, the mind is restless and difficult to steady; yet through patient practice and gentle letting go, it gradually becomes calm.',
+    learning:
+      'A wandering mind is human, not a failure. Returning your attention gently—again and again—is the whole practice.',
+    reflectionPrompt:
+      'What small practice helps bring your attention back when your thoughts feel scattered?',
+    takeaway: 'Steadiness grows through gentle return, not force.',
+    topic: 'Detachment',
+    sourceNote: 'Verified Sanskrit text from Bhagavad Gita Chapter 6, Verse 35; original Lunara reflection.',
+    status: 'published',
+    isFeatured: false,
+    isDaily: false,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+  {
+    id: 'gita-12-13',
+    title: 'Compassion without harshness',
+    scripture: 'Bhagavad Gita',
+    chapter: 12,
+    verse: '13',
+    sanskrit: 'अद्वेष्टा सर्वभूतानां मैत्रः करुण एव च।\nनिर्ममो निरहङ्कारः समदुःखसुखः क्षमी॥',
+    transliteration:
+      'Adveṣṭā sarva-bhūtānāṁ maitraḥ karuṇa eva ca;\nnirmamo nirahaṅkāraḥ sama-duḥkha-sukhaḥ kṣamī.',
+    meaning:
+      'One who carries no ill-will toward any being, who is friendly and compassionate, free from possessiveness and pride, balanced in joy and sorrow, and forgiving.',
+    learning:
+      'Compassion begins softly—by noticing where we can offer warmth and patience both to others and to our own imperfections.',
+    reflectionPrompt:
+      'Where in your day could a little warmth or forgiveness soften an unnecessary edge?',
+    takeaway: 'Patience and friendliness quietly transform a room.',
+    topic: 'Compassion',
+    sourceNote: 'Verified Sanskrit text from Bhagavad Gita Chapter 12, Verse 13; original Lunara reflection.',
+    status: 'published',
+    isFeatured: false,
+    isDaily: false,
+    createdAt: NOW,
+    updatedAt: NOW,
+  },
+];
+
+export const DEFAULT_REFLECTION_PROMPTS: ReflectionPromptItem[] = [
+  {
+    id: 'prm-1',
+    text: 'What is within your control today?',
+    placement: 'journal',
+    topic: 'Clarity',
+    active: true,
+    updatedAt: NOW,
+  },
+  {
+    id: 'prm-2',
+    text: 'What have you learned from the way this day unfolded?',
+    placement: 'both',
+    topic: 'Reflection',
+    active: true,
+    updatedAt: NOW,
+  },
+  {
+    id: 'prm-3',
+    text: 'Where could patience help you right now?',
+    placement: 'check-in',
+    topic: 'Patience',
+    active: true,
+    updatedAt: NOW,
+  },
+  {
+    id: 'prm-4',
+    text: 'What matters to you beyond today’s outcome?',
+    placement: 'journal',
+    topic: 'Wisdom',
+    active: true,
+    updatedAt: NOW,
+  },
+];
+
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPreferences = {
+  affirmations: true,
+  dailyWisdom: true,
+  gentleReminders: false,
+  adminMessages: true,
+  announcements: true,
+};
+
+export const DEFAULT_ANNOUNCEMENTS: AnnouncementItem[] = [
+  {
+    id: 'ann-1',
+    title: 'Welcome to Lunara Wisdom',
+    message:
+      'You can now explore daily Bhagavad Gita learnings and save comforting passages inside the Wisdom space.',
+    category: 'announcement',
+    status: 'published',
+    createdAt: NOW,
+    createdBy: 'Clara Lin',
+  },
+];
+
+export const DEFAULT_NOTIFICATIONS: UserNotification[] = [
+  {
+    id: 'notif-1',
+    title: 'A gentle thought for today',
+    message: "You don't have to figure everything out today.",
+    category: 'affirmation',
+    createdAt: NOW,
+    read: false,
+    sender: 'Lunara',
+    isPrototype: true,
+  },
+  {
+    id: 'notif-2',
+    title: 'Wisdom space is open',
+    message:
+      'Explore Bhagavad Gita reflections, Sanskrit verses, and everyday learnings at your own pace.',
+    category: 'update',
+    createdAt: '2026-11-25T18:00:00.000Z',
+    read: false,
+    sender: 'Lunara Workspace',
+    isPrototype: true,
+  },
+];
+
+export const DEFAULT_AUDIT_LOGS: AuditLogEntry[] = [
+  {
+    id: 'aud-1',
+    timestamp: '2026-11-26T09:15:00.000Z',
+    actorName: 'Clara Lin',
+    actorEmail: 'clara@lunara.example',
+    action: 'Published Wisdom Entry',
+    details: 'Set Bhagavad Gita Chapter 2, Verse 47 as featured daily wisdom (prototype).',
+  },
+  {
+    id: 'aud-2',
+    timestamp: '2026-11-25T16:40:00.000Z',
+    actorName: 'Clara Lin',
+    actorEmail: 'clara@lunara.example',
+    action: 'Updated Parameters',
+    details: 'Verified default check-in scale labels for Happiness, Energy, and Stress.',
+  },
+];
+
+export function buildPrototypeUserDirectory(): AdminUserPrototype[] {
+  const today = toDateKey();
+  const stamp = new Date().toISOString();
+
+  return [
+    {
+      id: 'usr-3',
+      name: 'Sora Takahashi',
+      email: 'sora@lunara.example',
+      role: 'Member',
+      status: 'active',
+      joinedDate: '2026-10-19',
+      lastActive: 'Today',
+      preferredWindow: 'evening',
+      checkIns: [
+        {
+          id: 'proto-ci-1',
+          date: addDays(today, -1),
+          mood: 'great',
+          happiness: 5,
+          energy: 4,
+          stress: 1,
+          likes: ['Time outdoors', 'Warm meal'],
+          dislikes: [],
+          notes: 'Quiet evening walk helped unwind completely.',
+          updatedAt: stamp,
+          isSample: true,
+        },
+        {
+          id: 'proto-ci-2',
+          date: addDays(today, -2),
+          mood: 'good',
+          happiness: 4,
+          energy: 3,
+          stress: 2,
+          likes: ['Quiet morning', 'Music or reading'],
+          dislikes: ['Screen fatigue'],
+          notes: 'Paced the afternoon better than earlier in the week.',
+          updatedAt: stamp,
+          isSample: true,
+        },
+        {
+          id: 'proto-ci-3',
+          date: addDays(today, -4),
+          mood: 'low',
+          happiness: 2,
+          energy: 2,
+          stress: 4,
+          likes: ['Restful pause'],
+          dislikes: ['Poor sleep'],
+          notes: 'Took an early night without guilt.',
+          updatedAt: stamp,
+          isSample: true,
+        },
+      ],
+      journals: [
+        {
+          id: 'proto-jr-1',
+          date: addDays(today, -1),
+          title: 'Evening stillness',
+          content:
+            'Noticed how different the room feels when I close my laptop thirty minutes earlier than usual. Nothing urgent was lost, and the evening felt genuinely mine.',
+          tags: ['Evening', 'Rest'],
+          createdAt: stamp,
+          updatedAt: stamp,
+          isSample: true,
+        },
+      ],
+    },
+    {
+      id: 'usr-2',
+      name: 'Mateo Vance',
+      email: 'mateo@lunara.example',
+      role: 'Facilitator',
+      status: 'active',
+      joinedDate: '2026-10-02',
+      lastActive: 'Yesterday',
+      preferredWindow: 'morning',
+      checkIns: [
+        {
+          id: 'proto-ci-4',
+          date: addDays(today, -1),
+          mood: 'okay',
+          happiness: 3,
+          energy: 3,
+          stress: 3,
+          likes: ['Good conversation'],
+          dislikes: ['Rushed schedule'],
+          notes: 'Busy morning, calmer dinner.',
+          updatedAt: stamp,
+          isSample: true,
+        },
+        {
+          id: 'proto-ci-5',
+          date: addDays(today, -3),
+          mood: 'good',
+          happiness: 4,
+          energy: 4,
+          stress: 2,
+          likes: ['Movement', 'Creative focus'],
+          dislikes: [],
+          notes: 'Steady creative focus before noon.',
+          updatedAt: stamp,
+          isSample: true,
+        },
+      ],
+      journals: [
+        {
+          id: 'proto-jr-2',
+          date: addDays(today, -3),
+          title: 'Letting the pace stay human',
+          content:
+            'Trying not to treat every quiet hour as wasted time. Reflection works best when it is unhurried.',
+          tags: ['Clarity'],
+          createdAt: stamp,
+          updatedAt: stamp,
+          isSample: true,
+        },
+      ],
+    },
+    {
+      id: 'usr-1',
+      name: 'Clara Lin',
+      email: 'clara@lunara.example',
+      role: 'Admin',
+      status: 'active',
+      joinedDate: '2026-09-14',
+      lastActive: 'Today',
+      preferredWindow: 'anytime',
+      checkIns: [
+        {
+          id: 'proto-ci-6',
+          date: addDays(today, -2),
+          mood: 'good',
+          happiness: 4,
+          energy: 4,
+          stress: 2,
+          likes: ['Quiet morning', 'Creative focus'],
+          dislikes: [],
+          notes: 'Reviewed weekly wisdom selections calmly.',
+          updatedAt: stamp,
+          isSample: true,
+        },
+      ],
+      journals: [],
+    },
+    {
+      id: 'usr-4',
+      name: 'Elena Rostova',
+      email: 'elena@lunara.example',
+      role: 'Member',
+      status: 'inactive',
+      joinedDate: '2026-11-04',
+      lastActive: '14 days ago',
+      preferredWindow: 'evening',
+      checkIns: [],
+      journals: [],
+    },
+  ];
+}

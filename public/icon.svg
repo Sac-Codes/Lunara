@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="lunaraBg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#293B56" />
+      <stop offset="55%" stop-color="#211B2B" />
+      <stop offset="100%" stop-color="#352942" />
+    </linearGradient>
+    <linearGradient id="lunaraMoon" x1="160" y1="120" x2="360" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#EAE0F3" />
+      <stop offset="55%" stop-color="#B18ACD" />
+      <stop offset="100%" stop-color="#78A6E7" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#lunaraBg)" />
+  <circle cx="256" cy="256" r="176" fill="#B18ACD" fill-opacity="0.08" />
+  <path
+    d="M312.5 148.5C294.2 142.3 274.2 141.1 254.2 145.9C196.7 159.7 161.3 217.5 175.1 275C188.9 332.5 246.7 367.9 304.2 354.1C324.2 349.3 341.7 339.1 355.4 325.2C325.6 333.6 292.7 326.5 269.8 303.6C237.2 271 237.2 218.2 269.8 185.6C282.5 172.9 297.6 164.2 312.5 148.5Z"
+    fill="url(#lunaraMoon)"
+  />
+  <circle cx="336" cy="196" r="10" fill="#E5B26F" />
+  <path
+    d="M128 386C182 356 238 354 298 372C338 384 366 384 388 374"
+    stroke="#76BBAA"
+    stroke-width="10"
+    stroke-linecap="round"
+    stroke-opacity="0.7"
+  />
+</svg>

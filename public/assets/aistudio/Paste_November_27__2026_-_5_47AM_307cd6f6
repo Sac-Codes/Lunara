@@ -1,0 +1,1138 @@
+# LUNARA — ADDITIONAL FEATURE EXPANSION
+## Admin Intelligence, User Communication, Affirmations & Bhagavad Gita Wisdom
+
+These are additional features to implement within the existing Lunara application.
+
+Integrate them into the current architecture, design system, navigation, dashboard and existing functionality. Do not build them as disconnected standalone pages.
+
+The overall goal is to make Lunara more meaningful, engaging, useful and personal while keeping the interface attractive, structured, colorful, and uncluttered.
+
+---
+
+# 1. EXPANDED ADMIN SYSTEM — MASTER ADMIN CAPABILITIES
+
+The Admin system should be significantly more capable than a basic dashboard.
+
+The Admin is responsible for overseeing the platform, managing users, understanding application activity, maintaining content, communicating with users and exporting data when necessary.
+
+Create a structured, professional Admin experience with a proper management hierarchy.
+
+## 1.1 Admin overview
+
+Create a comprehensive Admin dashboard that includes:
+
+- Total registered users
+- Active accounts
+- Inactive accounts
+- New registrations
+- Recent activity
+- Check-in activity overview
+- Journal activity overview
+- User engagement summaries
+- Pending administrative tasks
+- Notifications/communication status
+- Content management overview
+- System status
+
+Present information visually using:
+
+- Charts
+- Graphs
+- Tables
+- Timeline
+- Activity summaries
+- Status indicators
+- Structured data panels
+
+Do not make the dashboard cluttered.
+
+Use a clear visual hierarchy, placing important information first and detailed information in dedicated sections.
+
+Use real data when available. Use clearly labeled mock data only for the current frontend prototype.
+
+---
+
+# 2. USER DATA MANAGEMENT — STRUCTURED USER OVERVIEW
+
+The Admin must have a dedicated User Management section.
+
+Admin should be able to select an individual user and view their information in a properly structured, readable interface.
+
+## 2.1 User list
+
+Create a comprehensive user directory with:
+
+- User ID
+- Name
+- Email
+- Account creation date
+- Account status
+- Role
+- Last activity
+- Check-in frequency
+- Journal activity summary
+- Other relevant account information
+
+Provide:
+
+- Search
+- Filtering
+- Sorting
+- Pagination
+- Account status filtering
+- Role filtering
+- Profile opening
+- Quick actions
+
+Do not overload the table with too many columns.
+
+Use responsive tables on desktop and appropriate user-list layouts on mobile.
+
+## 2.2 Individual user detail page
+
+When Admin selects a user, open a dedicated user detail page.
+
+Organize the information using tabs, grouped sections, or another well-designed layout.
+
+### A. User Profile
+
+- User's name
+- Email
+- Account ID
+- Role
+- Account status
+- Joined date
+- Profile information
+- Last activity
+- Account-related information
+
+### B. Check-in History
+
+Display the user's recorded check-ins in a structured manner.
+
+Include:
+
+- Date
+- Mood
+- Happiness
+- Stress
+- Energy
+- Likes
+- Dislikes
+- Notes, if access is authorized
+
+Provide:
+
+- Timeline
+- Date filtering
+- Monthly/weekly navigation
+- Search where appropriate
+- Individual check-in detail view
+
+Make historical data easy to explore without overwhelming the Admin.
+
+### C. Journal History
+
+Provide a structured view of the user's journal activity.
+
+Include:
+
+- Entry date
+- Title
+- Entry preview
+- Tags
+- Entry details, subject to the authorized access model
+
+Allow navigation between entries and date filtering.
+
+Keep journal text readable with an editorial reading layout. Do not display long journal entries as tiny table cells.
+
+### D. Activity Overview
+
+Show:
+
+- Check-in frequency
+- Journal frequency
+- Last recorded activity
+- Activity across time
+- Basic engagement summaries
+
+Avoid creating invasive behavioral scoring or psychological profiling.
+
+Do not assign users labels such as "unstable," "problematic," or "emotionally risky" based on their reflection data.
+
+### E. User Calendar
+
+Provide a user-specific calendar that displays:
+
+- Recorded check-ins
+- Mood markers
+- Journal activity
+- Selected date details
+
+Admin should be able to explore the timeline for a specific user where authorized.
+
+---
+
+# 3. ADMIN DATA EXPORT
+
+Admin must be able to export user information in a structured format.
+
+This is a major feature and should have a dedicated interface.
+
+## 3.1 Export options
+
+Support export formats where practical:
+
+- CSV — structured tabular information
+- JSON — structured records
+- PDF — formatted reports, if implemented
+
+## 3.2 Export categories
+
+Allow Admin to choose which data to export:
+
+- User profile/account data
+- Check-in history
+- Happiness, stress and energy records
+- Likes and dislikes
+- Journal entries
+- Activity history
+- User calendar records
+- Selected date range
+- Full permitted user data report
+
+Allow selecting:
+
+- Individual user
+- Data category
+- Date range
+- Export format
+
+Do not force an export of all information when the Admin only needs a specific category.
+
+## 3.3 Export workflow
+
+Implement a clean workflow:
+
+1. Admin selects a user.
+2. Admin opens Export Data.
+3. Admin chooses export categories.
+4. Admin selects a date range if applicable.
+5. Admin selects file format.
+6. Admin reviews what will be included.
+7. Admin confirms export.
+8. The system generates the file.
+9. The file is downloaded.
+
+Add clear feedback for:
+
+- Export in progress
+- Export completed
+- Export failed
+- No data available
+
+Export files should have sensible names, for example:
+
+`lunara_user_export_YYYY-MM-DD.csv`
+
+## 3.4 Export safeguards
+
+Because this data may contain highly personal information:
+
+- Clearly display the categories being exported.
+- Confirm exports containing journal content.
+- Restrict export actions to authorized Admin accounts.
+- Avoid exposing data through URLs.
+- Avoid storing exported data unnecessarily.
+- Do not log actual journal contents in administrative activity logs.
+- Record who performed an export, when, which user it concerned, and the categories included.
+- Do not claim that exports are secure server-side until backend authorization exists.
+
+During the frontend prototype, demonstrate the workflow with clearly labeled mock data and sample downloadable files only.
+
+---
+
+# 4. ADMIN USER COMMUNICATION — PING, NOTIFICATIONS & LIVE UPDATES
+
+Create a communication system that allows Admin to send messages or notifications to users.
+
+The purpose is to allow important announcements, gentle reminders, updates, and personalized communication.
+
+This should not become an intrusive system.
+
+## 4.1 Admin ping
+
+Add an Admin action called "Ping User" or "Send Notification".
+
+Admin should be able to:
+
+- Select a user
+- Write a short message
+- Choose notification type
+- Preview the message
+- Send or schedule it, if supported
+
+Notification categories may include:
+
+- General message
+- Important announcement
+- Gentle reminder
+- App update
+- Affirmation
+- Personal encouragement
+
+Keep messages respectful, calm and non-judgmental.
+
+Avoid language that pressures users for not checking in, not writing journal entries, or being inactive.
+
+## 4.2 Notification experience for users
+
+Create an attractive notification system for the main Lunara app.
+
+Include:
+
+- Notification icon
+- Unread indicator
+- Notification center
+- Notification list
+- Notification timestamps
+- Read/unread status
+- Mark as read
+- Mark all as read
+- Dismiss/delete where appropriate
+- Notification preferences
+
+Notifications should use a clean and readable layout.
+
+Use appropriate iconography and color identities for different notification categories.
+
+## 4.3 Live updates
+
+Design the system to support real-time or near-real-time updates in the future.
+
+Examples:
+
+- Admin sends a message → user sees the notification.
+- Admin updates an affirmation → content can refresh.
+- Admin publishes a new Gita learning → the content appears in the appropriate section.
+- Admin updates application content → the relevant pages receive the update.
+
+Architecture should be prepared for future realtime functionality through Supabase Realtime, notifications or another appropriate backend service.
+
+However, the database and backend are currently deferred.
+
+Therefore:
+
+- Implement the frontend communication interface.
+- Create a clearly isolated notification state/service layer.
+- Use mock events only where necessary.
+- Do not pretend notifications are truly live across different accounts or devices.
+- Do not implement a fake websocket or realtime system that falsely claims to be operational.
+- Clearly distinguish prototype behavior from real backend functionality.
+
+## 4.4 User notification settings
+
+Allow users to control the types of messages they receive.
+
+Include appropriate preferences such as:
+
+- Affirmations
+- Daily wisdom
+- Gentle reminders
+- Admin messages
+- Announcements
+
+Allow notification preferences to be toggled.
+
+Do not assume all notifications should be enabled.
+
+---
+
+# 5. AFFIRMATIONS & POSITIVE WORDS
+
+Introduce a dedicated affirmation system throughout Lunara.
+
+The purpose is to provide users with gentle encouragement, positive thoughts, reassuring words and short reflections.
+
+The system should be thoughtful and human, not repetitive or artificially cheerful.
+
+## 5.1 Affirmation experience
+
+Display affirmations in appropriate places such as:
+
+- Home dashboard
+- Empty states
+- After a check-in
+- Journal page
+- Notification center
+- A dedicated affirmation section, if useful
+
+Use attractive visual panels.
+
+Possible visual style:
+
+- Lavender or rose background
+- Small decorative moon/star elements
+- Elegant typography
+- Subtle illustrated motifs
+- Clear text
+- A refresh or next-affirmation action, where appropriate
+
+Do not place affirmations everywhere.
+
+Use a limited number of placements and ensure they do not clutter the interface.
+
+## 5.2 Affirmation tone
+
+Affirmations should be:
+
+- Gentle
+- Encouraging
+- Realistic
+- Non-judgmental
+- Respectful
+- Emotionally grounded
+- Short
+- Natural
+
+Avoid:
+
+- Toxic positivity
+- Forced happiness
+- Unrealistic promises
+- Guilt
+- Shame
+- Pressure
+- Repetitive generic motivational quotes
+
+The app should not tell users that every difficult experience is good or that they must always be positive.
+
+The goal is to help users feel acknowledged, not forced into a mood.
+
+## 5.3 Affirmation examples
+
+Use original affirmations written specifically for Lunara.
+
+Examples:
+
+- "You don't have to figure everything out today."
+- "A small pause is still progress."
+- "Your feelings deserve space, not judgment."
+- "It's okay to take things one step at a time."
+- "You can begin again without explaining yesterday."
+- "Not every day needs to be extraordinary."
+- "You are allowed to take your time."
+- "One difficult moment doesn't define your entire day."
+- "There is value in simply noticing how you feel."
+- "You don't need to have all the answers right now."
+- "Rest and reflection are worthwhile, too."
+- "Be patient with the parts of life still unfolding."
+
+Create a collection of original content rather than relying on copied quotes from the internet.
+
+---
+
+# 6. ADMIN AFFIRMATION MANAGEMENT
+
+Admin must have the ability to manage the affirmation collection.
+
+Create a dedicated Admin section:
+
+**Content Management → Affirmations**
+
+## Admin capabilities
+
+- View all affirmations
+- Create new affirmation
+- Edit existing affirmation
+- Delete affirmation
+- Activate/deactivate
+- Categorize affirmations
+- Search
+- Filter
+- Preview
+- Publish/unpublish
+- Set display preferences
+- Optionally schedule content if supported
+
+## Suggested categories
+
+- Calm
+- Encouragement
+- Self-acceptance
+- Patience
+- Courage
+- Reflection
+- Gratitude
+- Hope
+- Rest
+- Beginning again
+
+## Affirmation fields
+
+- Affirmation text
+- Category
+- Status
+- Date created
+- Date updated
+- Created by
+- Optional scheduled date
+- Optional display priority
+
+## Display behavior
+
+Create a simple content rotation or selection system.
+
+Avoid showing the same affirmation repeatedly within a short period where practical.
+
+Allow the user to refresh or view another affirmation if appropriate.
+
+Do not make affirmations competitive, scored or streak-based.
+
+## Admin interface
+
+Make the affirmation manager visually attractive and easy to use.
+
+Include:
+
+- List/table
+- Preview
+- Editor
+- Search
+- Category filter
+- Status indicator
+- Add button
+- Confirmation dialog before deleting
+
+Do not make this an unnecessarily complicated CMS.
+
+---
+
+# 7. BHAGAVAD GITA — DAILY WISDOM & LEARNINGS
+
+Introduce a dedicated section in Lunara for wisdom and learnings inspired by the Bhagavad Gita.
+
+This section should be respectful, meaningful, beautifully designed and easy to explore.
+
+It should not feel like an unrelated religious content feed.
+
+The purpose is to present a short passage, its meaning and a practical learning that the user can reflect upon in everyday life.
+
+## 7.1 Dedicated section
+
+Create a new section with an appropriate name.
+
+Suggested names:
+
+- **Wisdom**
+- **Daily Wisdom**
+- **Gita & Reflections**
+- **Wisdom Within**
+- **The Gita**
+
+Recommended choice: **Wisdom**
+
+The section should have its own visual identity inspired by calm, contemplative design.
+
+Use:
+
+- Warm ivory
+- Muted amber
+- Lavender
+- Soft teal
+- Elegant typography
+- Subtle ornamental motifs
+- Sanskrit text presentation
+- Beautiful reading layouts
+- Small tasteful illustrations
+
+Do not use excessive religious ornamentation.
+
+Do not make the design cluttered.
+
+Keep it consistent with Lunara's overall identity.
+
+---
+
+# 8. BHAGAVAD GITA CONTENT STRUCTURE
+
+Every learning should follow a consistent structure.
+
+## A. Chapter and verse
+
+Display the reference clearly.
+
+For example:
+
+**Bhagavad Gita — Chapter 2, Verse 47**
+
+## B. Sanskrit Shloka
+
+Display the Sanskrit verse in a beautiful, readable Devanagari typeface.
+
+Ensure the text is accurate.
+
+Do not invent Sanskrit verses.
+
+Do not combine verses incorrectly.
+
+## C. Transliteration
+
+Provide a readable Roman transliteration.
+
+Make sure it corresponds accurately to the displayed Sanskrit verse.
+
+## D. Meaning
+
+Provide a clear, simple English meaning.
+
+Use original wording or a verified public-domain translation.
+
+Do not copy copyrighted modern translations without permission.
+
+## E. Learning
+
+Explain the central learning in everyday language.
+
+For example:
+
+**Learning:** Focus on the sincerity of your effort rather than becoming consumed by the outcome.
+
+## F. Everyday reflection
+
+Provide a practical reflection or question.
+
+For example:
+
+"What is one thing you can give your attention to today without worrying about the final result?"
+
+## G. Optional takeaway
+
+A short takeaway line that users can remember.
+
+Example:
+
+"Give your effort fully. Let the outcome unfold."
+
+Ensure the takeaway is clearly presented as a modern reflection inspired by the verse, not as a direct quotation from the scripture.
+
+---
+
+# 9. WISDOM SECTION — USER EXPERIENCE
+
+Create a dedicated Wisdom page.
+
+It should be engaging but peaceful.
+
+## Main page
+
+Include:
+
+### Featured wisdom
+
+A large featured section containing:
+
+- Chapter and verse
+- Sanskrit verse
+- Transliteration
+- Meaning
+- Learning
+- Reflection
+- A beautiful background composition
+
+Do not expose everything in a cramped card.
+
+Use an editorial layout with a proper reading hierarchy.
+
+### Browse wisdom
+
+Allow users to explore the collection.
+
+Possible browsing methods:
+
+- Chapter
+- Topic
+- Learning category
+- Search
+
+Possible topics:
+
+- Duty and responsibility
+- Patience
+- Action
+- Wisdom
+- Discipline
+- Inner balance
+- Courage
+- Detachment
+- Self-understanding
+- Compassion
+
+Make navigation intuitive.
+
+### Daily wisdom
+
+Create a featured daily wisdom item.
+
+The daily content should not change randomly every time the user refreshes the page.
+
+Use a deterministic daily selection or an assigned featured item, so the user can return to the same learning throughout the day.
+
+### Save/bookmark
+
+Where practical, allow users to save wisdom entries to their favorites.
+
+Create a saved wisdom area if it fits the existing architecture.
+
+Do not add unnecessary complexity.
+
+---
+
+# 10. WISDOM WIDGETS THROUGHOUT LUNARA
+
+The Wisdom section must not be isolated.
+
+Display small wisdom snippets on selected main pages to make the app feel meaningful and interconnected.
+
+However, do not overwhelm the main UI.
+
+## Home page
+
+Add a compact featured Wisdom panel.
+
+Display:
+
+- A short takeaway
+- Reference to the chapter/verse
+- A small "Explore" or "Read more" action
+
+Do not display the full Sanskrit verse, transliteration, meaning, learning and reflection all at once on the dashboard.
+
+Keep it compact and beautiful.
+
+## Check-in page
+
+Optionally display a subtle reflective line at the beginning or after completing the check-in.
+
+Keep it secondary to the check-in itself.
+
+Do not suggest that a scripture verse explains, judges, diagnoses or predicts the user's mood.
+
+## Journal page
+
+Add an optional wisdom-inspired writing prompt.
+
+Examples:
+
+- "What is within your control today?"
+- "What have you learned from the way this day unfolded?"
+- "Where could patience help you?"
+- "What matters to you beyond today's outcome?"
+
+These should be optional.
+
+## Calendar
+
+If useful, display a small wisdom indicator for a selected day or allow users to revisit saved wisdom.
+
+Do not overcrowd the calendar.
+
+## Insights
+
+Wisdom may appear as a small reflection alongside the insights, but must never make spiritual interpretations of the user's wellbeing data.
+
+---
+
+# 11. ADMIN — WISDOM CONTENT MANAGEMENT
+
+Admin must be able to manage the Wisdom collection.
+
+Create:
+
+**Content Management → Wisdom**
+
+Admin capabilities:
+
+- Add a wisdom entry
+- Edit an entry
+- Delete an entry
+- Preview
+- Publish/unpublish
+- Search
+- Filter by chapter
+- Filter by topic
+- Assign categories
+- Set featured wisdom
+- Set daily wisdom
+- Manage reflection prompts
+- Manage takeaway text
+
+## Content fields
+
+- Title/short heading
+- Scripture name
+- Chapter
+- Verse number or verse range
+- Sanskrit text
+- Transliteration
+- Translation/meaning
+- Learning
+- Reflection prompt
+- Takeaway
+- Topic/category
+- Status
+- Featured status
+- Daily selection status
+- Created date
+- Updated date
+
+## Content accuracy requirements
+
+The Bhagavad Gita is a real scripture. Content accuracy matters.
+
+- Do not fabricate verses.
+- Do not invent chapter/verse references.
+- Do not generate incorrect Sanskrit text.
+- Do not create mismatched transliterations.
+- Do not falsely attribute modern reflections to Krishna or the scripture.
+- Distinguish original scripture, translation, interpretation and modern takeaway.
+- Use verified source material for scripture and translations.
+- When the source is uncertain, do not publish the entry as verified.
+- Use original explanations for Lunara's learnings.
+- Maintain the source/reference information for each entry.
+
+For the frontend prototype, use a small carefully verified collection instead of generating dozens of questionable entries.
+
+Admin must be able to update the content later without requiring a redesign of the Wisdom page.
+
+---
+
+# 12. ADD THE NEW SECTION TO NAVIGATION
+
+Integrate Wisdom into the existing navigation.
+
+Existing primary sections:
+
+1. Home
+2. Check-in
+3. Journal
+4. Calendar
+5. Insights
+
+New section:
+
+6. Wisdom
+
+Ensure navigation remains uncluttered.
+
+### Mobile
+
+Do not try to display six or seven navigation icons in an overcrowded bottom bar.
+
+Use a suitable approach such as:
+
+- A carefully reorganized bottom navigation
+- A More menu
+- A secondary navigation entry
+- A scrollable or adaptive navigation design, if appropriate
+
+Keep the most frequently used destinations accessible.
+
+### Desktop
+
+Add Wisdom to the sidebar in an appropriate position.
+
+Use a distinctive but subtle icon.
+
+---
+
+# 13. ADMIN CONTENT MANAGEMENT HUB
+
+Expand Admin navigation with a dedicated Content Management section.
+
+Organize it into:
+
+### Affirmations
+Manage encouraging messages.
+
+### Wisdom
+Manage Bhagavad Gita verses, meanings and learnings.
+
+### Reflection Prompts
+Manage optional questions displayed in Check-in and Journal.
+
+### Announcements
+Manage application-wide messages.
+
+Use a consistent management UI.
+
+Avoid creating separate disconnected admin systems for each content type.
+
+The content management experience should use reusable editor components and common patterns.
+
+---
+
+# 14. NOTIFICATION AND CONTENT INTEGRATION
+
+Content should integrate properly across the application.
+
+Examples:
+
+- Admin publishes a new affirmation.
+- The affirmation collection is updated.
+- Admin selects a daily wisdom entry.
+- The Wisdom section reflects the published content.
+- A compact wisdom snippet appears on Home.
+- Admin sends an announcement.
+- The user receives it in their notification center.
+- Users can manage their notification preferences.
+
+Use a clear frontend state/data service layer that can later connect to the backend.
+
+For now, do not create a database.
+
+Do not fake cross-user live functionality.
+
+Do not claim that notifications were delivered to real accounts when using mock data.
+
+---
+
+# 15. PRIVACY, ACCESS CONTROL & ADMIN ACCOUNTABILITY
+
+Admin has broad administrative capabilities, but personal data should not be treated casually.
+
+Implement the following design requirements:
+
+- Admin access is role-restricted.
+- Admin user data access is separated from ordinary user access.
+- Export functionality is restricted to Admin.
+- Export operations require a clear review/confirmation.
+- Admin data access and exports should be audit-logged.
+- Logs should not contain journal text or sensitive personal content.
+- Users should be informed about the platform's data-access model.
+- Avoid displaying sensitive information unnecessarily.
+- Do not use personal reflection data for psychological profiling.
+- Do not automatically infer a user's mental health condition from their entries.
+
+Since backend security is not being implemented in this stage, create the frontend architecture and clearly document that production enforcement requires server-side authorization.
+
+---
+
+# 16. UPDATED NAVIGATION & FEATURE MAP
+
+Integrate all additions into the existing app without clutter.
+
+## User application
+
+- Home
+- Check-in
+- Journal
+- Calendar
+- Insights
+- Wisdom
+- Notifications
+- Settings
+
+## Admin application
+
+- Admin Overview
+- Users
+- Individual User Details
+  - Profile
+  - Check-in History
+  - Journal History
+  - Activity Overview
+  - Calendar
+- Data Export
+- Notifications / Ping Users
+- Content Management
+  - Affirmations
+  - Wisdom
+  - Reflection Prompts
+  - Announcements
+- Parameters
+- System Settings
+- Activity/Audit Logs
+
+Do not place all these links directly into one crowded sidebar.
+
+Create logical grouping and collapsible navigation if appropriate.
+
+---
+
+# 17. UPDATED IMPLEMENTATION PRIORITIES
+
+Integrate the new requirements into the existing implementation sequence.
+
+## Phase A — Visual system
+
+Improve:
+
+- Color palette
+- Graphics
+- Icons
+- Typography
+- Layout
+- Theme
+- Components
+
+## Phase B — App shell
+
+Improve:
+
+- Sidebar
+- Header
+- Mobile navigation
+- Responsive layouts
+
+## Phase C — Authentication
+
+Implement:
+
+- Login UI
+- Role-aware authentication structure
+- User/Admin separation
+- Protected routes
+- Logout
+- Access-denied pages
+
+## Phase D — Main user experience
+
+Complete:
+
+- Home
+- Check-in
+- Journal
+- Calendar
+- Insights
+- Settings
+
+## Phase E — Wisdom
+
+Implement:
+
+- Wisdom page
+- Verified Bhagavad Gita content
+- Sanskrit display
+- Transliteration
+- Meaning
+- Learning
+- Reflection
+- Takeaway
+- Topics
+- Favorites
+- Featured daily wisdom
+- Compact Wisdom widgets on main pages
+
+## Phase F — Affirmations
+
+Implement:
+
+- Affirmation experience
+- Affirmation collection
+- Display selection
+- User experience
+- Admin management
+
+## Phase G — Notifications
+
+Implement:
+
+- Notification center
+- Admin message interface
+- Ping User
+- Notification preferences
+- Mock communication service, clearly isolated
+
+## Phase H — Admin intelligence
+
+Implement:
+
+- Admin overview
+- User management
+- Individual user detail
+- Check-in history
+- Journal history
+- User calendar
+- Activity overview
+- Data export
+- User communication
+- Content management
+- Parameters
+- Settings
+- Audit log interface
+
+## Phase I — PWA and QA
+
+Test the complete application.
+
+Verify:
+
+- All routes
+- Login
+- Logout
+- User permissions
+- Admin permissions
+- Data export workflow
+- Notification UI
+- Content management
+- Wisdom content
+- Affirmations
+- Mobile navigation
+- Responsive design
+- Light theme
+- Dark theme
+- PWA installation
+- Existing functionality
+
+---
+
+# 18. FINAL DESIGN EXPECTATION
+
+All new features must follow Lunara's visual identity.
+
+Do not build Admin as a completely different application.
+
+Do not make Wisdom look like an unrelated scripture website.
+
+Do not make Affirmations look like a generic quote generator.
+
+Do not make Notifications look like a basic message list.
+
+Everything must feel like part of one coherent product.
+
+The app should have:
+
+- Attractive colors
+- Beautiful graphical sections
+- Purposeful icons
+- Selective emoji
+- Strong typography
+- Proper structure
+- Thoughtful spacing
+- Distinctive page identities
+- Smooth interactions
+- Excellent responsive design
+
+Maintain the balance:
+
+**Visually rich, but not crowded.**
+
+**Colorful, but not chaotic.**
+
+**Meaningful, but not preachy.**
+
+**Structured, but not rigid.**
+
+**Personal, but respectful of privacy.**
+
+**Engaging, but never pressuring the user.**
+
+Implement these additional features directly in the existing Lunara project.
+
+Inspect the current project, preserve existing functionality, integrate the new features, test them, and refine the design.
+
+Do not merely return a plan.
+
+Proceed with actual implementation.

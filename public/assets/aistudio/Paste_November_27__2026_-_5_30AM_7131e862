@@ -1,0 +1,1592 @@
+# LUNARA — COMPLETE VISUAL, UX & AUTHENTICATION UPGRADE
+
+## Project Identity
+
+**Product:** Lunara  
+**Tagline:** A little more thoughtful, every day.
+
+Lunara is a personal daily reflection and self-awareness application. It helps users pause, understand how they're feeling, reflect on their days, record thoughts, notice patterns, and explore their emotional experiences over time.
+
+The app should feel like a personal space — welcoming, visually beautiful, engaging, expressive, comfortable, and thoughtfully designed.
+
+I want you to significantly upgrade my EXISTING Lunara web application. Do not just give me suggestions, design ideas, an audit, or a plan. Inspect the existing codebase, understand its structure, and IMPLEMENT the improvements directly.
+
+---
+
+# 1. YOUR PRIMARY OBJECTIVE
+
+Transform the existing Lunara application into a polished, premium, colorful, visually engaging and well-structured product.
+
+The current direction needs improvement in:
+
+- Visual attractiveness
+- Color richness and color balance
+- Graphics and illustrations
+- Iconography
+- Layout and structure
+- Page hierarchy
+- User experience
+- Interactive feedback
+- Login and authentication experience
+- User/Admin separation
+- Responsive behavior
+- Consistency between different sections
+
+I want the app to look like a carefully designed modern product, not a basic dashboard, not a generic SaaS template, and not an AI-generated collection of identical cards.
+
+### The balance I want:
+
+- Attractive, but not overcrowded.
+- Colorful, but not chaotic.
+- Minimal, but not empty or boring.
+- Structured, but not rigid.
+- Interactive, but not distracting.
+- Premium, but not unnecessarily complicated.
+- Friendly, but not childish.
+- Graphical, but not full of decorative clutter.
+
+**Prioritize design quality, visual hierarchy, user experience and execution quality over simply adding more elements.**
+
+---
+
+# 2. FIRST: INSPECT THE EXISTING PROJECT
+
+Before changing anything:
+
+1. Inspect the complete existing project structure.
+2. Identify the framework, dependencies, routing, existing components, pages, styling system, theme implementation and any current authentication logic.
+3. Understand what has already been implemented.
+4. Identify existing features that are working.
+5. Preserve existing functional features, routes, data structures and useful components.
+6. Identify visual inconsistencies and areas that need redesign.
+7. Do not replace the entire project with a new template.
+8. Do not remove functional code merely because a new design is easier to implement from scratch.
+9. Do not overwrite or destroy existing user work.
+10. Reuse and improve the existing architecture where practical.
+
+If the project already uses React, Vite, TypeScript, Tailwind, a component library, routing or chart libraries, work with the existing setup unless there is a genuine reason to change something.
+
+Do not unnecessarily install new packages.
+
+After inspection, begin implementing the upgrade. Do not stop at an audit or wait for approval for ordinary design decisions.
+
+---
+
+# 3. DESIGN IDENTITY — LUNARA
+
+Create a distinct visual identity that users can recognize immediately.
+
+## Design keywords
+
+- Premium
+- Calm
+- Colorful
+- Personal
+- Editorial
+- Thoughtful
+- Soft
+- Expressive
+- Modern
+- Elegant
+- Immersive
+- Welcoming
+- Visually layered
+
+The design should feel like a fusion of a personal journal, a beautiful wellbeing companion, and a modern interactive application.
+
+Avoid looking like:
+
+- A generic admin dashboard
+- A plain white website with purple buttons
+- A template-based SaaS product
+- A childish mood tracker
+- A crowded analytics dashboard
+- A neon AI application
+- A repetitive collection of cards
+- An interface with random gradients everywhere
+
+---
+
+# 4. COLOR SYSTEM — USE COLORS MORE CONFIDENTLY
+
+Lavender remains Lunara's signature, but I want a significantly more colorful visual experience than the existing direction.
+
+Use the following palette as the foundation. You may refine shades, contrast, and combinations where necessary to achieve better visual results.
+
+## A. Lavender — Lunara's signature
+
+Used for identity, personal reflection, branding and key interactions.
+
+- Primary: `#B18ACD`
+- Light: `#D5BCE8`
+- Soft: `#EAE0F3`
+- Dark: `#795D96`
+- Surface: `#352942`
+
+## B. Blue — structure, calendar and exploration
+
+Blue must have a meaningful visual presence. Do not use it only for small icons.
+
+- Primary: `#78A6E7`
+- Light: `#B9D3F4`
+- Soft: `#DFEAF8`
+- Deep: `#304A70`
+- Surface: `#293B56`
+- Dark: `#19283C`
+
+## C. Rose — journaling and expression
+
+- Primary: `#D99EBB`
+- Light: `#F0C7DA`
+- Soft: `#F6E5ED`
+- Deep: `#9E6686`
+- Surface: `#45303D`
+
+## D. Teal — wellbeing and balance
+
+- Primary: `#76BBAA`
+- Light: `#BCE2D7`
+- Soft: `#DDEFE9`
+- Deep: `#4D9184`
+- Surface: `#263D3A`
+
+## E. Amber — discoveries and highlights
+
+- Primary: `#E5B26F`
+- Light: `#F3D8A9`
+- Soft: `#F8EBD4`
+- Deep: `#AA783A`
+- Surface: `#453622`
+
+## F. Coral — stress and difficult experiences
+
+- Primary: `#DF9189`
+- Light: `#F0BDB6`
+- Soft: `#F6DFDB`
+- Deep: `#A85D56`
+- Surface: `#442F35
+
+---
+
+# 5. COLORFUL BUT CONTROLLED — IMPORTANT
+
+Do not use a single color everywhere.
+
+Do not make every page purple.
+
+Do not use colors only on icons, thin borders, tiny badges, buttons or chart lines.
+
+Instead, use colors in the actual layout and composition.
+
+### Incorporate:
+
+- Large soft colored sections
+- Colored hero panels
+- Visually distinct page sections
+- Soft colored backgrounds behind grouped content
+- Illustrated backgrounds
+- Colored chart surfaces
+- Colored mood selections
+- Section-specific visual identities
+- Colored timelines
+- Layered surfaces
+- Meaningful contrast between neutral and colorful areas
+
+Color must be visible immediately when opening the application.
+
+However, do not use every color on every page. Assign colors according to the section's purpose.
+
+### Recommended color balance
+
+Approximately:
+
+- 35% neutral/foundation
+- 20% blue
+- 15% lavender
+- 10% rose
+- 10% teal
+- 5% amber
+- 5% other accents
+
+This is a flexible guide, not a strict formula.
+
+Use colors in a sophisticated manner. Avoid rainbow layouts, excessive gradients, oversaturation and competing colorful panels.
+
+---
+
+# 6. THEMES — LIGHT AND DARK
+
+Both themes must be designed deliberately and fully supported.
+
+## Light theme
+
+Use a soft, colorful, warm foundation.
+
+- Main background: `#F5F0F7`
+- Warm background: `#FBF7F2`
+- Main surface: `#FFFFFF`
+- Secondary surface: `#F0E9F4`
+- Blue surface: `#E3ECF9`
+- Lavender surface: `#EEE4F5`
+- Rose surface: `#F7E7EE`
+- Teal surface: `#E3F1EC`
+- Primary text: `#30263B`
+- Secondary text: `#776B81`
+
+The light theme should not feel sterile or plain.
+
+## Dark theme
+
+- Main background: `#17131F`
+- Secondary background: `#1D1927`
+- Sidebar: `#211B2B`
+- Neutral surface: `#292235`
+- Elevated surface: `#342841`
+- Raised surface: `#3B2D49`
+
+Use color thoughtfully in dark mode. Do not simply invert the light theme.
+
+Ensure:
+
+- Text readability
+- Correct contrast
+- Visually distinguishable surfaces
+- No harsh pure-white backgrounds everywhere
+- No excessive borders
+- Attractive chart colors
+- Proper hover, active and focus states
+
+Theme switching must work across all routes, including Login, Settings and Admin.
+
+---
+
+# 7. GRAPHICS, ILLUSTRATIONS, ICONS & EMOJI
+
+I want the app to become more visually interesting and engaging.
+
+Use graphics purposefully throughout Lunara.
+
+## Introduce graphics such as:
+
+- Moon and lunar-inspired artwork
+- Stars and tiny constellations
+- Soft clouds
+- Abstract organic shapes
+- Flowing curves
+- Petal-like forms
+- Subtle textured backgrounds
+- Atmospheric illustrations
+- Mood-related visual artwork
+- Gentle decorative shapes
+- Illustrated empty states
+- Graphical section headers
+
+Graphics should support the experience, not overwhelm it.
+
+Use CSS-generated decorative elements, SVG, existing local assets or suitable illustration assets when practical.
+
+Avoid unnecessary large images that slow the app down.
+
+Avoid random stock photography.
+
+Do not fill every page with decorative illustrations. Establish a visual hierarchy: some pages can be graphic-heavy, while others should remain focused on content.
+
+## ICONS
+
+Use consistent Lucide icons throughout the interface.
+
+Icons should be:
+
+- Consistent in size
+- Consistent in stroke style
+- Clearly recognizable
+- Aligned properly
+- Used with appropriate spacing
+- Given background shapes when useful
+- Meaningful, not decorative filler
+
+Use icons for:
+
+- Navigation
+- Actions
+- Settings
+- Calendar
+- Journal
+- Mood
+- Energy
+- Happiness
+- Stress
+- Notifications
+- User account
+- Admin functions
+- Empty states
+
+Do not mix multiple unrelated icon styles.
+
+## EMOJI
+
+Emoji can be used to add personality.
+
+Use them selectively in:
+
+- Mood selections
+- Friendly messages
+- Empty states
+- Journal prompts
+- Wellbeing summaries
+- Celebratory feedback
+
+Emoji should complement the Lucide icon system rather than replace it.
+
+Do not use emojis in every title, every button or every section.
+
+---
+
+# 8. LAYOUT AND STRUCTURE
+
+The biggest design priority is creating a properly structured interface.
+
+The application should have:
+
+- Clear page hierarchy
+- Proper section headings
+- Good spacing
+- Strong visual focal points
+- Consistent content alignment
+- Organized navigation
+- Carefully balanced compositions
+- Different layouts for different types of content
+
+## Avoid:
+
+- Too many cards
+- Cards inside cards inside cards
+- Identical layouts for every section
+- Excessive borders
+- Huge empty spaces with no purpose
+- Randomly scattered elements
+- Too many small widgets
+- Unnecessary information
+- Overly long dashboards
+- Tiny unreadable labels
+- Repetitive icons
+- Excessive pills and rounded containers
+
+Use a mix of:
+
+- Full-width feature sections
+- Open layouts
+- Card groupings
+- Colored panels
+- Timeline sections
+- Chart sections
+- List views
+- Split layouts
+- Featured content
+- Layered compositions
+- Side panels when useful
+
+Not everything should be enclosed in a card.
+
+## Spacing
+
+Use a consistent spacing system.
+
+Maintain proper spacing between:
+
+- Page title and content
+- Sections
+- Controls
+- Labels
+- Cards
+- Navigation
+- Charts
+- Forms
+
+Avoid cramped content.
+
+Avoid excessively large gaps that make the interface feel empty.
+
+---
+
+# 9. TYPOGRAPHY
+
+Create a strong typography system.
+
+Use a refined heading typeface such as:
+
+- DM Serif Display
+- Fraunces
+- Cormorant Garamond
+
+Use a clean sans-serif body typeface such as:
+
+- Inter
+- Manrope
+- DM Sans
+
+Choose a combination that fits the existing application and implement it consistently.
+
+Typography should establish hierarchy through:
+
+- Page titles
+- Section headings
+- Subheadings
+- Body text
+- Supporting text
+- Labels
+- Metadata
+- Numbers
+- Chart labels
+
+Do not make everything bold.
+
+Do not use excessive uppercase.
+
+Do not make supporting text too tiny.
+
+The application must remain readable on phones.
+
+---
+
+# 10. BUTTONS AND INTERACTIONS
+
+Improve the entire button system.
+
+Create consistent styles for:
+
+- Primary buttons
+- Secondary buttons
+- Blue action buttons
+- Outline buttons
+- Ghost buttons
+- Icon buttons
+- Destructive buttons
+- Text links
+
+Every interactive control should have appropriate:
+
+- Default state
+- Hover state
+- Active state
+- Focus state
+- Disabled state
+- Loading state where relevant
+
+Buttons should feel substantial and polished.
+
+Do not make everything a pill-shaped button.
+
+Use rounded corners appropriately, but preserve the design's structure.
+
+Interactions should have gentle feedback, including:
+
+- Subtle transitions
+- Hover elevation where appropriate
+- Selection animation
+- Visual feedback after saving
+- Confirmation feedback
+- Interactive chart tooltips
+- Smooth page transitions where appropriate
+
+Use motion thoughtfully and respect reduced-motion preferences.
+
+---
+
+# 11. LOGIN EXPERIENCE — BUILD A PROPER LOGIN PAGE
+
+Implement a new polished login page for Lunara.
+
+The login page must be part of the application's overall design identity, not an afterthought.
+
+## Visual composition
+
+Create an attractive, carefully composed login experience.
+
+Possible layout:
+
+### Desktop
+
+Use a split-screen composition.
+
+**Left visual panel:**
+- Lunara branding
+- Logo or lunar symbol
+- Tagline
+- Beautiful atmospheric illustration
+- Soft colorful artwork
+- Abstract moon, stars, organic shapes or layered visual composition
+- A short thoughtful message
+- Strong use of lavender, blue, rose and teal
+
+**Right panel:**
+- Login form
+- Clean, focused layout
+- Comfortable spacing
+- Attractive typography
+- Clear labels
+- Good field design
+- Strong primary button
+
+The two sides must balance properly.
+
+### Mobile
+
+Do not simply compress the desktop split screen.
+
+Create a mobile-appropriate composition:
+
+- Compact logo
+- Short welcome message
+- Optional small decorative illustration
+- Form takes priority
+- Comfortable spacing
+- Readable inputs
+- Easy-to-tap buttons
+- No horizontal scrolling
+
+## Login page content
+
+Include:
+
+- Lunara logo or icon
+- "Welcome back" heading
+- A short natural supporting message
+- Email or username field
+- Password field
+- Show/hide password control
+- Remember me if appropriate
+- Forgot password
+- Login button
+- Loading feedback
+- Validation feedback
+- Error feedback
+- Appropriate authentication success behavior
+
+Example copy:
+
+**Welcome back.**
+
+*Your space to pause, reflect, and reconnect.*
+
+Keep the writing warm, simple and human.
+
+Avoid generic corporate wording.
+
+## Login interactions
+
+Implement:
+
+- Form validation
+- Required fields
+- Email validation where applicable
+- Password visibility toggle
+- Loading state during authentication
+- Error messages
+- Keyboard support
+- Accessible labels
+- Enter-to-submit
+- Focus states
+
+If authentication is currently simulated, clearly isolate that implementation. Do not pretend that a mock login is real authentication.
+
+## Forgot password
+
+Create an appropriate forgot-password UI flow.
+
+If the backend is not available, implement a frontend placeholder state with a clear message that actual password recovery requires backend authentication.
+
+Do not create fake email delivery functionality.
+
+## Logout
+
+Provide a functional logout control for authenticated users.
+
+After logout:
+
+- Clear the appropriate session state
+- Return to the login page
+- Prevent access to authenticated pages
+
+---
+
+# 12. AUTHENTICATION AND ROLE-BASED ACCESS
+
+Lunara must support two account roles:
+
+1. **User**
+2. **Admin**
+
+The Admin section must only be available to an authorized Admin account.
+
+This is an important functional requirement.
+
+## USER ROLE
+
+Regular users can access:
+
+- Home
+- Daily Check-in
+- Journal
+- Calendar
+- Insights
+- Settings
+
+They must not have access to Admin pages.
+
+## ADMIN ROLE
+
+Authorized Admin accounts can access:
+
+- Normal user-facing features, as permitted
+- Admin dashboard
+- User management
+- Account management
+- Application parameters
+- Administrative settings
+- System overview
+
+## NAVIGATION
+
+For regular users:
+
+- Home
+- Check-in
+- Journal
+- Calendar
+- Insights
+
+For admins:
+
+- Normal navigation
+- An additional clearly separated Admin entry
+
+The Admin navigation should not be visible to regular users.
+
+Do not clutter normal user navigation with admin tools.
+
+## ROUTE PROTECTION
+
+Implement role-aware route protection.
+
+Routes such as:
+
+- `/admin`
+- `/admin/users`
+- `/admin/settings`
+- `/admin/parameters`
+
+Must only be accessible to an authenticated admin.
+
+If a regular user tries to access an admin URL directly:
+
+- Do not render the admin content.
+- Show a polished access-denied page or redirect appropriately.
+- Provide a way to return to the main app.
+
+If an unauthenticated user tries to access protected pages:
+
+- Redirect to Login.
+- Preserve the intended destination if practical.
+- Return to the intended destination after successful login, where appropriate.
+
+Do not rely on hiding the Admin button as the only security measure.
+
+Role checks must be implemented in the application's authentication and routing structure.
+
+### SECURITY NOTE
+
+Because database and backend development is intentionally deferred, do not claim that frontend role protection provides real security.
+
+For this stage:
+
+- Build the authentication UI.
+- Build the role-aware frontend architecture.
+- Isolate mock authentication logic.
+- Use clearly identified temporary mock accounts or development authentication only if needed for testing.
+- Never store passwords as plain text.
+- Never hardcode a privileged production admin credential into the frontend.
+- Never imply that admin authorization is secure against client-side tampering.
+
+Real authentication, session security, server-side role validation and protected data access will be implemented when the backend is introduced.
+
+Make this structure ready for future integration with Supabase Auth and server-side role authorization, without building the database now.
+
+---
+
+# 13. ADMIN AREA — SEPARATE VISUAL IDENTITY
+
+Create a visually distinct but brand-consistent Admin experience.
+
+Admin should feel more structured and operational than the main Lunara app.
+
+## Admin visual direction
+
+- Deep blue
+- Slate
+- Lavender highlights
+- Neutral surfaces
+- Clear tables
+- Strong information hierarchy
+- Consistent system icons
+- Less decorative artwork
+- More structured layouts
+- Professional visualizations
+
+Do not make Admin excessively colorful.
+
+## Admin dashboard
+
+Create a polished Admin overview containing suitable sections such as:
+
+- System overview
+- Users overview
+- Account status
+- Recent administrative activity
+- Quick management actions
+- Parameter overview
+- System configuration
+
+Use mock data only where necessary, and clearly isolate it.
+
+Do not fabricate live metrics.
+
+If metrics are mocked, make that obvious in the development implementation and avoid presenting them as actual system statistics.
+
+## User management
+
+Build the frontend structure for:
+
+- User list
+- Search
+- Filters
+- User details
+- Account status
+- Add/invite user interface
+- Activate/deactivate UI
+- Basic role display
+- Appropriate confirmation dialogs
+
+Do not create fake backend operations.
+
+Actions that require the backend should be clearly identified as prototype operations or handled by a properly isolated mock layer.
+
+## Parameter management
+
+Build a well-organized interface to manage application parameters, including fields such as:
+
+- Parameter name
+- Description
+- Parameter type
+- Enabled/disabled
+- Optional/required
+- Display order
+- Scale or option values when applicable
+
+Make the UI practical and understandable.
+
+Avoid unnecessarily complicated administration features.
+
+---
+
+# 14. HOME DASHBOARD — MAKE IT VISUALLY ENGAGING
+
+Redesign the Home page.
+
+It must be the first impression of Lunara and should feel beautiful, personal, and engaging.
+
+## Header
+
+Include:
+
+- Greeting based on the time of day
+- Current date
+- A short supportive message
+- Profile or settings access
+- Theme control if appropriate
+
+Messages should not force positivity.
+
+Avoid repeated generic greetings.
+
+## Main featured section
+
+Create a visually engaging featured area.
+
+It might include:
+
+- A large colorful panel
+- Lunar-inspired artwork
+- A welcoming message
+- Today's check-in status
+- A prominent Start or Update Check-in action
+
+The main section should be visually distinctive without taking up the entire screen.
+
+## Today's reflection
+
+If the user has completed a check-in:
+
+Show a meaningful, attractive summary of:
+
+- Mood
+- Happiness
+- Energy
+- Stress
+
+Use appropriate icons, visual indicators and colors.
+
+If no check-in exists:
+
+Show an attractive invitation to begin.
+
+Do not show fabricated data.
+
+## Weekly Pulse
+
+Display a responsive chart showing mood or wellbeing data across the week.
+
+Requirements:
+
+- Use actual available data
+- Attractive visual design
+- Responsive chart
+- Clear labels
+- Tooltips
+- Appropriate colors
+- Proper empty state
+- No fabricated trends
+
+## Recent Days
+
+Create a visually interesting recent activity timeline.
+
+Display appropriate information:
+
+- Date
+- Mood
+- Check-in
+- Journal activity
+
+Use timeline markers, colored indicators and subtle visual organization.
+
+## Latest Journal
+
+Show a preview of the most recent journal entry if one exists.
+
+Use editorial typography and a distinctive visual treatment.
+
+## Dashboard composition
+
+The Home page must have visual hierarchy.
+
+Do not make every section identical.
+
+Use a combination of:
+
+- Featured section
+- Compact summaries
+- Timeline
+- Chart
+- Editorial journal preview
+- Quick navigation
+
+Make the dashboard feel like a real personal application.
+
+---
+
+# 15. DAILY CHECK-IN — EXPRESSIVE AND INTERACTIVE
+
+Redesign the Daily Check-in experience.
+
+The check-in should feel comfortable, engaging, and easy to complete in approximately 1–3 minutes.
+
+## Mood selection
+
+Support:
+
+- Great
+- Good
+- Okay
+- Low
+- Difficult
+- Unsure
+
+Use expressive visuals.
+
+Each mood should have:
+
+- A meaningful icon or emoji
+- Distinct color identity
+- Clear label
+- Hover/active state
+- Selection feedback
+
+Do not make the mood selector look like plain radio buttons.
+
+Make it visually engaging while keeping it easy to understand.
+
+## Rating controls
+
+Include:
+
+- Happiness: 1–5
+- Stress: 1–5
+- Energy: 1–5
+
+Use visually attractive interactive controls.
+
+Avoid tiny sliders or controls that are hard to use.
+
+Display the selected value clearly.
+
+Use appropriate color coding, but don't imply that higher values are universally better for every metric.
+
+## Likes and dislikes
+
+Provide:
+
+- Suggested tags
+- Ability to select multiple tags
+- Ability to add custom tags
+- Clear selected/unselected states
+- Easy removal
+
+## Notes
+
+Include an optional free-form notes field.
+
+The writing area should feel comfortable.
+
+## Save experience
+
+Implement:
+
+- Save
+- Edit existing check-in
+- Cancel/back
+- Validation where necessary
+- Loading feedback
+- Success feedback
+- Existing entry preservation
+
+Create an attractive completion state, but do not use excessive celebration or guilt-based messaging.
+
+---
+
+# 16. JOURNAL — BEAUTIFUL WRITING EXPERIENCE
+
+Redesign Journal as a personal writing space.
+
+Use rose and lavender as the primary visual identity.
+
+## Main features
+
+- Create entry
+- Edit entry
+- Delete entry
+- Title
+- Content
+- Date
+- Optional tags
+- Search
+- Filtering
+- Journal list
+- Reading view
+- Empty state
+
+## Visual direction
+
+Use:
+
+- Editorial typography
+- Soft rose-colored surfaces
+- A distinctive writing area
+- Thoughtful whitespace
+- Date separators
+- Timeline elements where useful
+- Beautiful entry previews
+- Subtle decorative details
+- Comfortable reading widths
+
+The journal should feel different from the dashboard.
+
+Do not display every entry as an identical small card.
+
+Consider:
+
+- Featured latest entry
+- Timeline
+- Clean text-led list
+- Selected entry reading panel
+- Date grouping
+
+## Writing interface
+
+The writing experience must be comfortable on mobile and desktop.
+
+Avoid cramped input fields.
+
+Do not interfere with the user's writing using excessive decorations or animations.
+
+The user should feel that the journal is their own space.
+
+---
+
+# 17. CALENDAR — BLUE VISUAL IDENTITY
+
+Redesign Calendar using blue as its primary identity.
+
+## Features
+
+- Monthly calendar
+- Previous/next month
+- Today indicator
+- Selected date
+- Check-in indicators
+- Mood markers
+- Journal markers
+- Selected day details
+- Navigation to edit/view entries
+
+## Design
+
+Create a custom calendar UI.
+
+Do not rely on an unstyled browser calendar.
+
+Use:
+
+- Blue surfaces
+- Clear date hierarchy
+- Colored mood dots
+- Journal indicators
+- Selected-date highlighting
+- Today's highlight
+- Subtle hover interactions
+
+On mobile:
+
+- Compact layout
+- Clear tap targets
+- No overflow
+- A useful selected-day detail section
+
+On desktop:
+
+- Calendar
+- Selected-day detail panel where appropriate
+
+Do not overload calendar cells with excessive text.
+
+---
+
+# 18. INSIGHTS — CHARTS AND VISUAL EXPLORATION
+
+Redesign Insights with a more graphical and structured approach.
+
+Use a coordinated mix of blue, teal, lavender and amber.
+
+## Possible insights
+
+- Mood trends
+- Happiness patterns
+- Stress patterns
+- Energy patterns
+- Check-in frequency
+- Journaling frequency
+- Weekly comparisons
+- Monthly overview
+
+## Chart requirements
+
+- Responsive
+- Clear
+- Visually attractive
+- Readable
+- Proper tooltips
+- Consistent colors
+- Clear legends
+- Accessible labels
+- Correct data
+- No fabricated statistics
+
+Use the existing chart library if one is already installed.
+
+Charts must not be squeezed into tiny containers.
+
+Do not make every chart a separate identical card.
+
+Create a coherent Insights page with an overall hierarchy.
+
+## Empty and insufficient data states
+
+When data is insufficient:
+
+- Show an attractive visual placeholder.
+- Explain naturally that patterns will emerge as the user records more days.
+- Do not invent trends.
+- Do not use fake percentages.
+- Do not show misleading chart data.
+
+The insights should be descriptive, not diagnostic.
+
+Never present Lunara as a medical or mental health diagnostic system.
+
+---
+
+# 19. SETTINGS — ORGANIZED AND VISUAL
+
+Redesign Settings into a structured interface.
+
+Possible groups:
+
+### Account
+- Profile
+- Account details
+- Password and security placeholder
+- Logout
+
+### Appearance
+- Light theme
+- Dark theme
+- Theme preference
+
+### Preferences
+- General preferences
+- Check-in preferences
+- Personalization
+
+### Notifications
+- Notification preferences
+- Reminders, if supported
+
+### Data and Privacy
+- Data management
+- Export placeholder
+- Privacy information
+
+### About Lunara
+- App information
+- Version
+- Credits
+
+Use clear icons and organized groups.
+
+Do not create a long, cluttered settings page.
+
+Use grouped navigation, tabs, sections or another sensible design if it improves usability.
+
+---
+
+# 20. NAVIGATION AND APP SHELL
+
+Redesign the application shell.
+
+## Mobile
+
+Mobile is a primary experience, not an afterthought.
+
+Include:
+
+- Compact header
+- Lunara branding
+- Appropriate user controls
+- Five primary bottom-navigation destinations
+- Comfortable touch targets
+- Safe-area support
+- Correct page spacing
+
+Primary destinations:
+
+1. Home
+2. Check-in
+3. Journal
+4. Calendar
+5. Insights
+
+Use icons and readable labels.
+
+Do not cram the navigation.
+
+If necessary, use thoughtful active states and selected icons.
+
+## Desktop
+
+Create a polished sidebar-based navigation.
+
+Include:
+
+- Lunara logo
+- Primary destinations
+- Clearly separated secondary items
+- User profile area
+- Theme control
+- Admin entry only for Admin accounts
+
+The sidebar must feel intentional, not just a vertical list.
+
+## Tablet
+
+Adapt intelligently.
+
+Use a layout that takes advantage of available space without stretching mobile components.
+
+---
+
+# 21. RESPONSIVE DESIGN
+
+Test and refine the design across the following widths:
+
+- 320px
+- 360px
+- 375px
+- 390px
+- 430px
+- 600px
+- 768px
+- 820px
+- 1024px
+- 1280px
+- 1440px
+
+Check:
+
+- No horizontal overflow
+- Correct navigation
+- Readable text
+- Appropriate spacing
+- Proper chart sizing
+- Modal positioning
+- Responsive forms
+- Touch-friendly controls
+- Safe areas
+- Grid behavior
+- Images and illustrations
+- Content width
+- Sidebar behavior
+- Mobile bottom navigation
+
+Do not simply scale desktop down to mobile.
+
+Create responsive compositions appropriate for each screen size.
+
+---
+
+# 22. PWA
+
+Preserve the existing PWA implementation if present and improve it where necessary.
+
+Ensure:
+
+- App manifest
+- Correct application name
+- Short name
+- Theme color
+- App icons
+- Standalone display mode
+- Installability
+- Service worker
+- Offline fallback
+- Appropriate caching
+- Responsive app experience
+
+Avoid caching sensitive user information inappropriately.
+
+Do not break existing PWA functionality during the redesign.
+
+---
+
+# 23. DATABASE — DO NOT IMPLEMENT YET
+
+Database work is intentionally postponed.
+
+Do not:
+
+- Create database tables
+- Change database schemas
+- Start Supabase migrations
+- Implement complex backend persistence
+- Make database decisions unnecessarily
+
+Focus on:
+
+- UI
+- UX
+- Design
+- Existing application features
+- Frontend state
+- Authentication structure
+- Role separation
+- Mock-data isolation
+- PWA
+
+If the existing project has database-related code, inspect and preserve it. Do not destroy or unnecessarily modify it.
+
+Mock data must be isolated in a clear location.
+
+Never display mock data as real user information.
+
+Prepare the structure for future Supabase integration without implementing the backend now.
+
+---
+
+# 24. TECHNICAL QUALITY
+
+Maintain the existing project's technical integrity.
+
+## Code quality
+
+- Reuse components appropriately.
+- Avoid unnecessary abstractions.
+- Avoid giant components.
+- Keep pages and components organized.
+- Keep styling consistent.
+- Use proper types where applicable.
+- Avoid duplicating code.
+- Avoid unnecessary dependencies.
+- Avoid broken imports.
+- Avoid console errors.
+- Avoid unused code.
+- Avoid placeholder buttons that do nothing.
+- Avoid implementing interactions only visually when they should work.
+
+## Existing features
+
+Preserve existing working features.
+
+When redesigning a component, make sure its functionality continues working.
+
+## Accessibility
+
+Include:
+
+- Keyboard navigation
+- Focus states
+- Accessible labels
+- Appropriate contrast
+- Semantic structure
+- Reduced-motion support
+- Screen-reader-friendly controls where practical
+
+## Performance
+
+- Avoid excessive images.
+- Avoid unnecessary animations.
+- Avoid large dependencies.
+- Keep the app smooth.
+- Optimize graphics.
+- Avoid unnecessary rerenders where practical.
+
+---
+
+# 25. IMPLEMENTATION APPROACH
+
+Work directly in the project.
+
+Do not stop after creating a plan.
+
+Do not simply tell me what needs to be changed.
+
+Implement the changes.
+
+Use this sequence:
+
+### Phase 1 — Inspect and establish foundation
+
+- Inspect the existing project.
+- Identify current architecture.
+- Improve design tokens.
+- Implement the refined color system.
+- Implement typography.
+- Improve shared buttons, inputs, icons and surfaces.
+- Improve theme support.
+- Establish consistent spacing and visual rules.
+
+### Phase 2 — App shell and navigation
+
+- Improve sidebar.
+- Improve header.
+- Improve mobile navigation.
+- Implement responsive shell.
+- Add proper role-aware navigation structure.
+
+### Phase 3 — Authentication
+
+- Build the login page.
+- Build the frontend authentication flow.
+- Add role-aware session structure.
+- Implement user/admin navigation separation.
+- Implement protected routes.
+- Add logout.
+- Create access-denied UI.
+- Clearly isolate mock authentication.
+
+### Phase 4 — Home dashboard
+
+- Redesign the Home page.
+- Introduce graphical hierarchy.
+- Improve colors.
+- Add illustrations.
+- Improve timeline.
+- Improve chart.
+- Improve journal preview.
+
+### Phase 5 — Check-in
+
+- Redesign mood selector.
+- Improve ratings.
+- Improve tag selection.
+- Improve notes.
+- Improve save/edit flow.
+- Add completion feedback.
+
+### Phase 6 — Journal
+
+- Redesign journal list.
+- Improve editor.
+- Improve reading view.
+- Implement search and filters.
+- Improve empty states.
+
+### Phase 7 — Calendar
+
+- Redesign calendar.
+- Improve mood markers.
+- Improve selected-day detail.
+- Improve responsive behavior.
+
+### Phase 8 — Insights
+
+- Improve chart design.
+- Improve data hierarchy.
+- Improve empty states.
+- Ensure data integrity.
+
+### Phase 9 — Settings and Admin
+
+- Redesign settings.
+- Implement Admin dashboard UI.
+- Implement user management UI.
+- Implement parameter management UI.
+- Ensure admin-only frontend access.
+
+### Phase 10 — PWA and QA
+
+- Verify PWA.
+- Test responsiveness.
+- Test navigation.
+- Test theme switching.
+- Test authentication flow.
+- Test role-based access.
+- Test all interactions.
+- Fix errors.
+- Refine visual inconsistencies.
+
+You may adapt the sequence if the existing codebase makes a better implementation path obvious, but do not skip requirements.
+
+---
+
+# 26. DESIGN QUALITY CONTROL — BEFORE YOU FINISH
+
+After implementation, inspect the actual application rather than assuming your code is visually correct.
+
+If browser preview or browser automation is available, use it to inspect the pages.
+
+Review the following:
+
+- Login page
+- Home page
+- Check-in page
+- Journal page
+- Calendar page
+- Insights page
+- Settings page
+- Admin dashboard
+- Mobile layout
+- Desktop layout
+- Light theme
+- Dark theme
+
+Ask yourself:
+
+### Visual
+
+- Does the app look genuinely attractive?
+- Is the color actually visible across the application?
+- Does blue have meaningful presence?
+- Does lavender still feel like the brand?
+- Are the graphics attractive and tasteful?
+- Is the layout well structured?
+- Does each page have its own visual identity?
+- Is there enough whitespace?
+- Are sections visually distinct?
+- Are the icons consistent?
+- Are there too many cards?
+- Is it crowded?
+- Does it look like a generic template?
+
+### User experience
+
+- Can users understand where they are?
+- Are actions clear?
+- Are buttons easy to use?
+- Is navigation intuitive?
+- Are forms comfortable?
+- Are empty states helpful?
+- Are interactions responsive?
+- Is mobile usability good?
+
+### Technical
+
+- Do all routes work?
+- Does login behave correctly?
+- Does logout work?
+- Are protected routes actually protected in the frontend?
+- Is Admin navigation role-aware?
+- Can normal users access Admin pages directly?
+- Are there errors?
+- Is existing functionality preserved?
+- Does the PWA still work?
+
+Fix identified issues before concluding.
+
+---
+
+# 27. FINAL EXPECTATION
+
+I am not asking for a minor cosmetic update.
+
+I want a meaningful upgrade to Lunara's overall visual experience and application structure.
+
+The final product should feel:
+
+**Beautiful at first glance.**
+
+**Colorful without being chaotic.**
+
+**Structured without being boring.**
+
+**Engaging without being crowded.**
+
+**Personal without being childish.**
+
+**Modern without looking generic.**
+
+Make thoughtful design decisions yourself. If you notice opportunities to improve the interface beyond my specific instructions, implement them if they improve the experience and do not compromise the core purpose.
+
+Preserve the identity and purpose of Lunara.
+
+Do not turn it into a productivity tracker, medical app, generic dashboard, or social platform.
+
+Do not overengineer.
+
+Do not destroy existing features.
+
+Do not wait for me to approve every small decision.
+
+Inspect, implement, test, refine, and complete the upgrade.
+
+The goal is to make Lunara feel like a product someone would genuinely enjoy opening every day — a thoughtful, colorful, beautiful little space of their own.
+
+**Start by inspecting the existing project, then proceed with implementation.**

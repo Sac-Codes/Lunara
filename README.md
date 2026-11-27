@@ -6,7 +6,7 @@
 
 This contains everything you need to run your app locally.
 
-View your app in AI Studio: https://ai.studio/apps/e53e239d-d30a-44c8-bdcf-e4f3edc4561a
+Live website: [Open Lunara](https://lunara-hljzhw3kz-sac6.vercel.app/login)
 
 ## Run Locally
 

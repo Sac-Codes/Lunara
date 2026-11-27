@@ -11,6 +11,56 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+
+const ACTIVITY_CATEGORIES = [
+  {
+    name: 'Movement & Physical Wellbeing',
+    key: 'movement',
+    surfaceClass: 'bg-[var(--surface-teal)]',
+    accentText: 'text-[var(--teal-strong)]',
+    selectedClass: 'bg-[#3D7D70] text-white dark:bg-[#76BBAA] dark:text-[#132421]',
+    focusOutline: 'focus:outline-[#76BBAA]',
+    tags: ['Exercise / Fitness', 'Walking', 'Sports', 'Yoga / Stretching', 'Time Outdoors', 'Rest'],
+  },
+  {
+    name: 'Learning & Productivity',
+    key: 'learning',
+    surfaceClass: 'bg-[var(--surface-blue)]',
+    accentText: 'text-[var(--blue-strong)]',
+    selectedClass: 'bg-[#2A5A9E] text-white dark:bg-[#78A6E7] dark:text-[#111E33]',
+    focusOutline: 'focus:outline-[#78A6E7]',
+    tags: ['Studying / Learning', 'Reading', 'Focused Work', 'Completed Something', 'Explored Something New'],
+  },
+  {
+    name: 'Creativity',
+    key: 'creativity',
+    surfaceClass: 'bg-[var(--surface-lavender)]',
+    accentText: 'text-[var(--lavender-strong)]',
+    selectedClass: 'bg-[#795D96] text-white dark:bg-[#B18ACD] dark:text-[#17131F]',
+    focusOutline: 'focus:outline-[#B18ACD]',
+    tags: ['Writing', 'Coding / Building', 'Art / Drawing', 'Music', 'Creative Thinking'],
+  },
+  {
+    name: 'Connection & Experiences',
+    key: 'connection',
+    surfaceClass: 'bg-[var(--surface-rose)]',
+    accentText: 'text-[var(--rose-strong)]',
+    selectedClass: 'bg-[#9E6686] text-white dark:bg-[#D99EBB] dark:text-[#23151D]',
+    focusOutline: 'focus:outline-[#D99EBB]',
+    tags: ['Time With Friends', 'Family Time', 'Meaningful Conversation', 'Helped Someone', 'Time Alone'],
+  },
+  {
+    name: 'Everyday Life',
+    key: 'everyday',
+    surfaceClass: 'bg-[var(--surface-amber)]',
+    accentText: 'text-[var(--amber-strong)]',
+    selectedClass: 'bg-[#9A692C] text-white dark:bg-[#E5B26F] dark:text-[#23190B]',
+    focusOutline: 'focus:outline-[#E5B26F]',
+    tags: ['Good Sleep / Rest', 'Enjoyable Meal', 'Organized My Space', 'Entertainment', 'Busy Day', 'Unexpected Events'],
+  },
+] as const;
+
+const NEEDS_TAGS = ['Rest', 'Encouragement', 'Clarity', 'Patience', 'Support', 'Space', 'Connection', 'Confidence', 'A break', 'Understanding'];
 import { CalmHorizonOrb } from '../components/graphics/LunarArtwork';
 import { AffirmationCard } from '../components/shared/AffirmationCard';
 import { PageHeader } from '../components/shared/PageHeader';
@@ -72,11 +122,10 @@ const ScaleSelector: React.FC<ScaleSelectorProps> = ({
               type="button"
               onClick={() => onChange(isSelected ? null : num)}
               aria-pressed={isSelected}
-              className={`min-h-[46px] rounded-[13px] font-medium text-sm tabular-nums transition-all duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#B18ACD] active:scale-[0.97] ${
-                isSelected
+              className={`min-h-[46px] rounded-[13px] font-medium text-sm tabular-nums transition-all duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#B18ACD] active:scale-[0.97] ${isSelected
                   ? `${activeClass} shadow-sm`
                   : 'bg-[var(--surface-main)]/75 text-[var(--text-secondary)] hover:bg-[var(--surface-main)] hover:text-[var(--text-primary)]'
-              }`}
+                }`}
             >
               {num}
             </button>
@@ -131,6 +180,15 @@ export const CheckInPage: React.FC = () => {
     existing?.customValues ?? {}
   );
 
+  // New fields: activities, reflections
+  const [activities, setActivities] = useState<string[]>(existing?.activities ?? []);
+  const [customActivities, setCustomActivities] = useState<string[]>(existing?.customActivities ?? []);
+  const [customActivityInputs, setCustomActivityInputs] = useState<Record<string, string>>({});
+  const [proudOf, setProudOf] = useState<string>(existing?.proudOf ?? '');
+  const [needs, setNeeds] = useState<string[]>(existing?.needs ?? []);
+  const [customNeedInput, setCustomNeedInput] = useState('');
+  const [tomorrowIntention, setTomorrowIntention] = useState<string>(existing?.tomorrowIntention ?? '');
+
   const [customLikeInput, setCustomLikeInput] = useState('');
   const [customDislikeInput, setCustomDislikeInput] = useState('');
   const [validationMessage, setValidationMessage] = useState('');
@@ -148,6 +206,14 @@ export const CheckInPage: React.FC = () => {
     setDislikes(entry?.dislikes ?? []);
     setNotes(entry?.notes ?? '');
     setCustomValues(entry?.customValues ?? {});
+    // Reset new fields
+    setActivities(entry?.activities ?? []);
+    setCustomActivities(entry?.customActivities ?? []);
+    setCustomActivityInputs({});
+    setProudOf(entry?.proudOf ?? '');
+    setNeeds(entry?.needs ?? []);
+    setCustomNeedInput('');
+    setTomorrowIntention(entry?.tomorrowIntention ?? '');
     setValidationMessage('');
     setCompletedState(false);
   }, [activeDate, getCheckInByDate]);
@@ -207,7 +273,12 @@ export const CheckInPage: React.FC = () => {
       likes.length > 0 ||
       dislikes.length > 0 ||
       notes.trim().length > 0 ||
-      Object.keys(customValues).length > 0;
+      Object.keys(customValues).length > 0 ||
+      activities.length > 0 ||
+      customActivities.length > 0 ||
+      proudOf.trim().length > 0 ||
+      needs.length > 0 ||
+      tomorrowIntention.trim().length > 0;
 
     if (!hasAnyInput) {
       setValidationMessage('Choose at least one mood, scale, tag, or note before saving.');
@@ -228,6 +299,11 @@ export const CheckInPage: React.FC = () => {
         dislikes,
         notes: notes.trim(),
         customValues,
+        activities,
+        customActivities,
+        proudOf: proudOf.trim(),
+        needs,
+        tomorrowIntention: tomorrowIntention.trim(),
       });
       setIsSaving(false);
       setCompletedState(true);
@@ -381,16 +457,15 @@ export const CheckInPage: React.FC = () => {
                   style={
                     selected
                       ? {
-                          backgroundColor: surfaceBg,
-                          borderColor: m.accentHex,
-                        }
+                        backgroundColor: surfaceBg,
+                        borderColor: m.accentHex,
+                      }
                       : undefined
                   }
-                  className={`text-left rounded-[18px] p-4 border transition-all duration-150 cursor-pointer active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-[#B18ACD] ${
-                    selected
+                  className={`text-left rounded-[18px] p-4 border transition-all duration-150 cursor-pointer active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-[#B18ACD] ${selected
                       ? 'shadow-sm'
                       : 'bg-[var(--surface-secondary)]/70 border-transparent hover:bg-[var(--surface-secondary)]'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span
@@ -534,11 +609,10 @@ export const CheckInPage: React.FC = () => {
                     type="button"
                     onClick={() => toggleTag(setLikes, item)}
                     aria-pressed={selected}
-                    className={`min-h-[40px] px-3.5 py-2 rounded-[12px] text-xs sm:text-sm font-medium transition-all cursor-pointer active:scale-[0.97] ${
-                      selected
+                    className={`min-h-[40px] px-3.5 py-2 rounded-[12px] text-xs sm:text-sm font-medium transition-all cursor-pointer active:scale-[0.97] ${selected
                         ? 'bg-[#9E6686] text-white dark:bg-[#D99EBB] dark:text-[#23151D] shadow-xs'
                         : 'bg-[var(--surface-main)]/75 text-[var(--text-secondary)] hover:bg-[var(--surface-main)] hover:text-[var(--text-primary)]'
-                    }`}
+                      }`}
                   >
                     {item}
                   </button>
@@ -593,11 +667,10 @@ export const CheckInPage: React.FC = () => {
                     type="button"
                     onClick={() => toggleTag(setDislikes, item)}
                     aria-pressed={selected}
-                    className={`min-h-[40px] px-3.5 py-2 rounded-[12px] text-xs sm:text-sm font-medium transition-all cursor-pointer active:scale-[0.97] ${
-                      selected
+                    className={`min-h-[40px] px-3.5 py-2 rounded-[12px] text-xs sm:text-sm font-medium transition-all cursor-pointer active:scale-[0.97] ${selected
                         ? 'bg-[#A85D56] text-white dark:bg-[#DF9189] dark:text-[#241315] shadow-xs'
                         : 'bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                    }`}
+                      }`}
                   >
                     {item}
                   </button>
@@ -635,6 +708,217 @@ export const CheckInPage: React.FC = () => {
               </div>
             )}
           </div>
+        </section>
+
+        {/* What Shaped Your Day — Activity Tags */}
+        <section className="rounded-[24px] bg-[var(--surface-main)] p-5 sm:p-7 shadow-[var(--shadow-card)]">
+          <div className="flex items-baseline justify-between gap-3 mb-5">
+            <div>
+              <h2 className="font-display text-xl font-medium text-[var(--text-primary)]">
+                What shaped your day?
+              </h2>
+              <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
+                Select anything that was part of your day. All optional.
+              </p>
+            </div>
+            <span className="text-xs text-[var(--text-muted)] shrink-0">Optional</span>
+          </div>
+
+          <div className="space-y-4">
+            {ACTIVITY_CATEGORIES.map((cat) => {
+              const catCustomTags = customActivities
+                .filter((t) => t.startsWith(`${cat.key}:`))
+                .map((t) => t.replace(`${cat.key}:`, ''));
+              const allCatTags = [...cat.tags, ...catCustomTags];
+              return (
+                <div key={cat.key} className={`rounded-[20px] ${cat.surfaceClass} p-4 sm:p-5`}>
+                  <div className={`text-xs font-semibold uppercase tracking-wider mb-3 ${cat.accentText}`}>
+                    {cat.name}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {allCatTags.map((tag) => {
+                      const selected = activities.includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() =>
+                            setActivities((prev) =>
+                              prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                            )
+                          }
+                          aria-pressed={selected}
+                          className={`min-h-[36px] px-3 py-1.5 rounded-[11px] text-xs sm:text-sm font-medium transition-all cursor-pointer active:scale-[0.97] ${selected
+                              ? `${cat.selectedClass} shadow-xs`
+                              : 'bg-[var(--surface-main)]/75 text-[var(--text-secondary)] hover:bg-[var(--surface-main)] hover:text-[var(--text-primary)]'
+                            }`}
+                        >
+                          {tag}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {adminConfig.allowCustomTags && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={customActivityInputs[cat.key] ?? ''}
+                        onChange={(e) =>
+                          setCustomActivityInputs((prev) => ({ ...prev, [cat.key]: e.target.value }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const val = (customActivityInputs[cat.key] ?? '').trim();
+                            if (val && !activities.includes(val)) {
+                              setActivities((prev) => [...prev, val]);
+                              setCustomActivities((prev) => [...prev, `${cat.key}:${val}`]);
+                            }
+                            setCustomActivityInputs((prev) => ({ ...prev, [cat.key]: '' }));
+                          }
+                        }}
+                        placeholder="Add your own..."
+                        className={`flex-1 min-w-0 min-h-[40px] rounded-[11px] bg-[var(--surface-main)] border border-[var(--border-subtle)] px-3 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-2 ${cat.focusOutline}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const val = (customActivityInputs[cat.key] ?? '').trim();
+                          if (val && !activities.includes(val)) {
+                            setActivities((prev) => [...prev, val]);
+                            setCustomActivities((prev) => [...prev, `${cat.key}:${val}`]);
+                          }
+                          setCustomActivityInputs((prev) => ({ ...prev, [cat.key]: '' }));
+                        }}
+                        leftIcon={<Plus className="w-3.5 h-3.5" />}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Something I'm Proud Of */}
+        <section className="rounded-[24px] bg-[var(--surface-teal)] p-5 sm:p-6 shadow-[var(--shadow-card)]">
+          <div className="flex items-baseline justify-between gap-3">
+            <div>
+              <h2 className="font-display text-xl font-medium text-[var(--text-primary)]">
+                Something I&apos;m proud of today
+              </h2>
+              <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
+                Was there something you did today that you&apos;d like to appreciate?
+              </p>
+            </div>
+            <span className="text-xs text-[var(--text-muted)] shrink-0">Optional</span>
+          </div>
+          <p className="mt-1.5 text-xs text-[var(--teal-strong)]">
+            This can be something small — effort, learning, a decision, or a moment.
+          </p>
+          <textarea
+            value={proudOf}
+            onChange={(e) => setProudOf(e.target.value)}
+            rows={3}
+            placeholder="Something worth appreciating about today..."
+            className="mt-3 w-full rounded-[16px] bg-[var(--surface-main)] border border-[var(--border-subtle)] p-4 text-[15px] leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-2 focus:outline-[#76BBAA]"
+          />
+        </section>
+
+        {/* What I Needed Today */}
+        <section className="rounded-[24px] bg-[var(--surface-blue)] p-5 sm:p-6 shadow-[var(--shadow-card)]">
+          <div className="flex items-baseline justify-between gap-3 mb-4">
+            <div>
+              <h2 className="font-display text-xl font-medium text-[var(--text-primary)]">
+                What I needed today
+              </h2>
+              <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
+                Select anything that resonates. No explanation required.
+              </p>
+            </div>
+            <span className="text-xs text-[var(--text-muted)] shrink-0">Optional</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[...NEEDS_TAGS, ...needs.filter((n) => !NEEDS_TAGS.includes(n))].map((tag) => {
+              const selected = needs.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() =>
+                    setNeeds((prev) =>
+                      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                    )
+                  }
+                  aria-pressed={selected}
+                  className={`min-h-[40px] px-3.5 py-2 rounded-[12px] text-xs sm:text-sm font-medium transition-all cursor-pointer active:scale-[0.97] ${selected
+                      ? 'bg-[#2A5A9E] text-white dark:bg-[#78A6E7] dark:text-[#111E33] shadow-xs'
+                      : 'bg-[var(--surface-main)]/75 text-[var(--text-secondary)] hover:bg-[var(--surface-main)] hover:text-[var(--text-primary)]'
+                    }`}
+                >
+                  {tag}
+                </button>
+              );
+            })}
+          </div>
+          {adminConfig.allowCustomTags && (
+            <div className="mt-4 flex items-center gap-2">
+              <input
+                type="text"
+                value={customNeedInput}
+                onChange={(e) => setCustomNeedInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const val = customNeedInput.trim();
+                    if (val && !needs.includes(val)) setNeeds((prev) => [...prev, val]);
+                    setCustomNeedInput('');
+                  }
+                }}
+                placeholder="Something else you needed..."
+                className="flex-1 min-w-0 min-h-[44px] rounded-[12px] bg-[var(--surface-main)] border border-[var(--border-subtle)] px-3.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-2 focus:outline-[#78A6E7]"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const val = customNeedInput.trim();
+                  if (val && !needs.includes(val)) setNeeds((prev) => [...prev, val]);
+                  setCustomNeedInput('');
+                }}
+                leftIcon={<Plus className="w-4 h-4" />}
+              >
+                Add
+              </Button>
+            </div>
+          )}
+        </section>
+
+        {/* Tomorrow's Intention */}
+        <section className="rounded-[24px] bg-[var(--surface-lavender)] p-5 sm:p-6 shadow-[var(--shadow-card)]">
+          <div className="flex items-baseline justify-between gap-3">
+            <div>
+              <h2 className="font-display text-xl font-medium text-[var(--text-primary)]">
+                Tomorrow&apos;s intention
+              </h2>
+              <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
+                Is there anything you&apos;d like to carry into tomorrow?
+              </p>
+            </div>
+            <span className="text-xs text-[var(--text-muted)] shrink-0">Optional</span>
+          </div>
+          <textarea
+            value={tomorrowIntention}
+            onChange={(e) => setTomorrowIntention(e.target.value)}
+            rows={2}
+            placeholder="A word, intention, or thought for tomorrow..."
+            className="mt-3 w-full rounded-[16px] bg-[var(--surface-main)] border border-[var(--border-subtle)] p-4 text-[15px] leading-relaxed text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-2 focus:outline-[#B18ACD]"
+          />
         </section>
 
         {/* Free-form Reflection Notes */}

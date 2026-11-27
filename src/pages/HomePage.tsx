@@ -63,6 +63,30 @@ const TOPIC_SURFACES: Record<WisdomTopic, { bg: string; text: string }> = {
     bg: 'bg-[var(--surface-rose)]/85 hover:bg-[var(--surface-rose)]',
     text: 'text-[var(--rose-strong)]',
   },
+  Knowledge: {
+    bg: 'bg-[var(--surface-indigo)]/85 hover:bg-[var(--surface-indigo)]',
+    text: 'text-[var(--blue-strong)]',
+  },
+  Gratitude: {
+    bg: 'bg-[var(--surface-amber)]/85 hover:bg-[var(--surface-amber)]',
+    text: 'text-[var(--amber-strong)]',
+  },
+  'Inner Peace': {
+    bg: 'bg-[var(--surface-teal)]/85 hover:bg-[var(--surface-teal)]',
+    text: 'text-[var(--teal-strong)]',
+  },
+  Focus: {
+    bg: 'bg-[var(--surface-lavender)]/85 hover:bg-[var(--surface-lavender)]',
+    text: 'text-[var(--lavender-strong)]',
+  },
+  Equanimity: {
+    bg: 'bg-[var(--surface-blue)]/85 hover:bg-[var(--surface-blue)]',
+    text: 'text-[var(--blue-strong)]',
+  },
+  Purpose: {
+    bg: 'bg-[var(--surface-coral)]/85 hover:bg-[var(--surface-coral)]',
+    text: 'text-[var(--coral-strong)]',
+  },
 };
 
 export const HomePage: React.FC = () => {

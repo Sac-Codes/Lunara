@@ -23,6 +23,12 @@ export interface CheckInEntry {
   dislikes: string[];
   notes: string;
   customValues?: Record<string, string | number>;
+  // Phase 1 additions
+  activities?: string[];         // Selected activity tags ("What shaped your day?")
+  customActivities?: string[];   // User-added custom activities
+  proudOf?: string;              // Something I'm proud of today
+  needs?: string[];              // What I needed today
+  tomorrowIntention?: string;    // Tomorrow's intention
   updatedAt: string; // ISO
   isSample?: boolean;
 }
@@ -111,7 +117,13 @@ export type WisdomTopic =
   | 'Self-Understanding'
   | 'Courage'
   | 'Detachment'
-  | 'Compassion';
+  | 'Compassion'
+  | 'Knowledge'
+  | 'Gratitude'
+  | 'Inner Peace'
+  | 'Focus'
+  | 'Equanimity'
+  | 'Purpose';
 
 export interface WisdomEntry {
   id: string;

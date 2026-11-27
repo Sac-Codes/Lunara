@@ -85,15 +85,19 @@ export const WisdomPage: React.FC = () => {
     setSearchParams(searchParams, { replace: true });
   };
 
-  const handleBookmark = (entry: WisdomEntry) => {
+  const handleBookmark = async (entry: WisdomEntry) => {
     const willSave = !savedWisdomIds.includes(entry.id);
-    toggleBookmarkWisdom(entry.id);
-    showToast(
-      willSave
-        ? `Saved Bhagavad Gita ${entry.chapter}:${entry.verse} to your bookmarks.`
-        : 'Removed from saved wisdom.',
-      'amber'
-    );
+    try {
+      await toggleBookmarkWisdom(entry.id);
+      showToast(
+        willSave
+          ? `Saved Bhagavad Gita ${entry.chapter}:${entry.verse} to your bookmarks.`
+          : 'Removed from saved wisdom.',
+        'amber'
+      );
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not update saved wisdom.', 'amber');
+    }
   };
 
   return (

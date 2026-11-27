@@ -263,7 +263,7 @@ export const CheckInPage: React.FC = () => {
     setSearchParams({ date: nextDate });
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const hasAnyInput =
       mood !== null ||
@@ -288,8 +288,8 @@ export const CheckInPage: React.FC = () => {
     setValidationMessage('');
     setIsSaving(true);
 
-    window.setTimeout(() => {
-      saveCheckIn({
+    try {
+      await saveCheckIn({
         date: activeDate,
         mood,
         happiness,
@@ -305,17 +305,25 @@ export const CheckInPage: React.FC = () => {
         needs,
         tomorrowIntention: tomorrowIntention.trim(),
       });
-      setIsSaving(false);
       setCompletedState(true);
       showToast(existing ? 'Check-in updated.' : 'Daily check-in saved.', 'teal');
-    }, 220);
+    } catch (error) {
+      setValidationMessage(error instanceof Error ? error.message : 'Could not save your check-in. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDelete = () => {
-    deleteCheckIn(activeDate);
-    setConfirmDeleteOpen(false);
-    showToast('Check-in removed for this day.', 'lavender');
-    navigate('/');
+  const handleDelete = async () => {
+    try {
+      await deleteCheckIn(activeDate);
+      setConfirmDeleteOpen(false);
+      showToast('Check-in removed for this day.', 'lavender');
+      navigate('/');
+    } catch (error) {
+      setValidationMessage(error instanceof Error ? error.message : 'Could not delete your check-in.');
+      setConfirmDeleteOpen(false);
+    }
   };
 
   if (completedState) {

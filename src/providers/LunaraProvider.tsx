@@ -12,6 +12,14 @@ import {
   DEFAULT_WISDOM_ENTRIES,
 } from '../data/wisdomAndAffirmations';
 import { lunaraStorage } from '../lib/storage';
+import { adminService } from '../services/adminService';
+import { checkInService } from '../services/checkInService';
+import { journalService } from '../services/journalService';
+import { notificationService } from '../services/notificationService';
+import { preferencesService } from '../services/preferencesService';
+import { profileService } from '../services/profileService';
+import { roleService } from '../services/roleService';
+import { wisdomService } from '../services/wisdomService';
 import { useAuth } from './AuthProvider';
 import type {
   AdminSystemConfig,
@@ -57,18 +65,18 @@ interface LunaraContextValue {
   toggleTheme: () => void;
 
   checkIns: CheckInEntry[];
-  saveCheckIn: (entry: Omit<CheckInEntry, 'id' | 'updatedAt'> & { id?: string }) => CheckInEntry;
-  deleteCheckIn: (dateKey: string) => void;
+  saveCheckIn: (entry: Omit<CheckInEntry, 'id' | 'updatedAt'> & { id?: string }) => Promise<CheckInEntry>;
+  deleteCheckIn: (dateKey: string) => Promise<void>;
   getCheckInByDate: (dateKey: string) => CheckInEntry | undefined;
 
   journals: JournalEntry[];
   saveJournal: (
     entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }
-  ) => JournalEntry;
-  deleteJournal: (id: string) => void;
+  ) => Promise<JournalEntry>;
+  deleteJournal: (id: string) => Promise<void>;
 
   profile: UserProfile;
-  updateProfile: (patch: Partial<UserProfile>) => void;
+  updateProfile: (patch: Partial<UserProfile>) => Promise<void>;
 
   parameters: CheckInParameterConfig[];
   updateParameters: (next: CheckInParameterConfig[]) => void;
@@ -96,7 +104,7 @@ interface LunaraContextValue {
   updateWisdom: (id: string, patch: Partial<WisdomEntry>) => void;
   deleteWisdom: (id: string) => void;
   setDailyWisdom: (id: string) => void;
-  toggleBookmarkWisdom: (id: string) => void;
+  toggleBookmarkWisdom: (id: string) => Promise<void>;
 
   // Reflection Prompts
   reflectionPrompts: ReflectionPromptItem[];
@@ -117,17 +125,18 @@ interface LunaraContextValue {
   notifications: UserNotification[];
   unreadNotificationCount: number;
   notificationPrefs: NotificationPreferences;
-  updateNotificationPrefs: (patch: Partial<NotificationPreferences>) => void;
+  updateNotificationPrefs: (patch: Partial<NotificationPreferences>) => Promise<void>;
   sendNotification: (payload: {
     title: string;
     message: string;
     category: NotificationCategory;
+    targetUserId?: string;
     targetUserLabel?: string;
     targetUserName?: string;
-  }) => void;
-  markNotificationRead: (id: string, read?: boolean) => void;
-  markAllNotificationsRead: () => void;
-  deleteNotification: (id: string) => void;
+  }) => Promise<void>;
+  markNotificationRead: (id: string, read?: boolean) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
 
   // Admin Prototype Directory & Audit Logs
   adminUsers: AdminUserPrototype[];
@@ -164,6 +173,14 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [hydratedContextKey, setHydratedContextKey] = useState<string>('');
   const contextVersionRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => lunaraStorage.getTheme());
   const [systemDark, setSystemDark] = useState<boolean>(() =>
@@ -193,6 +210,7 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [adminUsers, setAdminUsers] = useState<AdminUserPrototype[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const showToastRef = useRef<(message: string, tone?: ToastMessage['tone']) => void>(() => { });
 
   // Isolate and reset user-specific state on every auth context transition.
   useEffect(() => {
@@ -234,7 +252,8 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     if (user.authMode === 'supabase') {
-      // Authenticated mode: strictly isolate from legacy global localStorage.
+      // Authenticated mode: strictly isolate from legacy global localStorage,
+      // then hydrate cloud personal data for the current user.
       setCheckIns([]);
       setJournals([]);
       setProfile({
@@ -253,10 +272,81 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setNotificationPrefs(DEFAULT_NOTIFICATION_PREFS);
       setAdminUsers([]);
       setAuditLogs([]);
-      if (version === contextVersionRef.current) {
-        setHydratedContextKey(targetContextKey);
-      }
-      return;
+
+      void (async () => {
+        try {
+          const [
+            checkInsResult,
+            journalsResult,
+            profileResult,
+            preferencesResult,
+            savedWisdomResult,
+            notificationsResult,
+          ] = await Promise.all([
+            checkInService.listByUser(),
+            journalService.listByUser(),
+            profileService.getOwnProfile(),
+            preferencesService.getOwnPreferences(),
+            wisdomService.listSavedIds(),
+            notificationService.listOwnNotifications(),
+          ]);
+          if (!mountedRef.current || version !== contextVersionRef.current) {
+            return;
+          }
+
+          if (checkInsResult.ok) setCheckIns(checkInsResult.data);
+          if (journalsResult.ok) setJournals(journalsResult.data);
+          if (profileResult.ok && profileResult.data) {
+            setProfile({
+              displayName: profileResult.data.displayName,
+              preferredCheckInTime: profileResult.data.preferredCheckInTime,
+              dailyReminderEnabled: profileResult.data.dailyReminderEnabled,
+              reminderTime: profileResult.data.reminderTime,
+              showGreetingPrompts: profileResult.data.showGreetingPrompts,
+            });
+          }
+          if (preferencesResult.ok && preferencesResult.data) {
+            setThemeModeState(preferencesResult.data.themeMode);
+            setFavoriteAffirmationIds(preferencesResult.data.favoriteAffirmationIds);
+            setNotificationPrefs(preferencesResult.data.notificationPrefs);
+          }
+          if (savedWisdomResult.ok) setSavedWisdomIds(savedWisdomResult.data);
+          if (notificationsResult.ok) setNotifications(notificationsResult.data);
+          if (user.role === 'admin') {
+            const adminUsersResult = await adminService.listUsers();
+            if (mountedRef.current && version === contextVersionRef.current) {
+              if (adminUsersResult.ok) setAdminUsers(adminUsersResult.data);
+              else showToastRef.current(adminUsersResult.error.message, 'amber');
+            }
+          }
+
+          const failures = [
+            checkInsResult,
+            journalsResult,
+            profileResult,
+            preferencesResult,
+            savedWisdomResult,
+            notificationsResult,
+          ].filter((result) => !result.ok);
+          if (failures.length > 0) {
+            showToastRef.current('Some cloud data could not be loaded. You can retry by refreshing.', 'amber');
+          }
+        } catch {
+          if (!mountedRef.current || version !== contextVersionRef.current) {
+            return;
+          }
+          setCheckIns([]);
+          showToastRef.current('Could not load your saved check-ins.', 'amber');
+        } finally {
+          if (mountedRef.current && version === contextVersionRef.current) {
+            setHydratedContextKey(targetContextKey);
+          }
+        }
+      })();
+
+      return () => {
+        contextVersionRef.current += 1;
+      };
     }
 
     // Demo / preview mode: load legacy localStorage sandbox.
@@ -307,8 +397,14 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const setThemeMode = useCallback((mode: ThemeMode) => {
     setThemeModeState(mode);
-    lunaraStorage.setTheme(mode);
-  }, []);
+    if (dataMode === 'authenticated') {
+      void preferencesService.upsertOwnPreferences({ themeMode: mode }).then((result) => {
+        if (!result.ok) showToastRef.current(result.error.message, 'amber');
+      });
+    } else if (dataMode === 'demo') {
+      lunaraStorage.setTheme(mode);
+    }
+  }, [dataMode]);
 
   const toggleTheme = useCallback(() => {
     const next = resolvedTheme === 'dark' ? 'light' : 'dark';
@@ -330,11 +426,15 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [dismissToast]
   );
 
+  useEffect(() => {
+    showToastRef.current = showToast;
+  }, [showToast]);
+
   const guardDemoOnlyMutation = useCallback(
     (notifyInAuth = true): boolean => {
       if (dataMode === 'demo') return true;
       if (dataMode === 'authenticated' && notifyInAuth) {
-        showToast('Cloud sync for personal entries is coming in the next step.', 'blue');
+        showToast('This setting is demo-only and unavailable in a cloud account.', 'blue');
       }
       return false;
     },
@@ -363,14 +463,38 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 
   const saveCheckIn = useCallback(
-    (entry: Omit<CheckInEntry, 'id' | 'updatedAt'> & { id?: string }) => {
+    async (entry: Omit<CheckInEntry, 'id' | 'updatedAt'> & { id?: string }) => {
       const now = new Date().toISOString();
-      if (!guardDemoOnlyMutation()) {
-        return {
+      if (dataMode === 'authenticated') {
+        const existing = checkIns.find((checkIn) => checkIn.date === entry.date);
+        const merged: typeof entry = {
+          ...existing,
           ...entry,
-          id: entry.id || `ci-${entry.date}`,
-          updatedAt: now,
+          likes: entry.likes ?? existing?.likes ?? [],
+          dislikes: entry.dislikes ?? existing?.dislikes ?? [],
+          activities: entry.activities ?? existing?.activities ?? [],
+          customActivities: entry.customActivities ?? existing?.customActivities ?? [],
+          needs: entry.needs ?? existing?.needs ?? [],
+          customValues: entry.customValues ?? existing?.customValues ?? {},
+          proudOf: entry.proudOf ?? existing?.proudOf ?? '',
+          tomorrowIntention: entry.tomorrowIntention ?? existing?.tomorrowIntention ?? '',
+          notes: entry.notes ?? existing?.notes ?? '',
         };
+        const result = await checkInService.upsertByDate(merged);
+        if (!result.ok) {
+          throw new Error(result.error.message);
+        }
+        setCheckIns((prev) => {
+          const next = prev.some((checkIn) => checkIn.date === result.data.date)
+            ? prev.map((checkIn) => (checkIn.date === result.data.date ? result.data : checkIn))
+            : [...prev, result.data];
+          next.sort((a, b) => b.date.localeCompare(a.date));
+          return next;
+        });
+        return result.data;
+      }
+      if (dataMode !== 'demo') {
+        throw new Error('Your personal data is still initializing.');
       }
       let savedRecord: CheckInEntry | null = null;
       setCheckIns((prev) => {
@@ -397,19 +521,25 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       );
     },
-    [guardDemoOnlyMutation]
+    [dataMode, checkIns]
   );
 
   const deleteCheckIn = useCallback(
-    (dateKey: string) => {
-      if (!guardDemoOnlyMutation()) return;
+    async (dateKey: string) => {
+      if (dataMode === 'authenticated') {
+        const result = await checkInService.deleteByDate(dateKey);
+        if (!result.ok) throw new Error(result.error.message);
+        setCheckIns((prev) => prev.filter((checkIn) => checkIn.date !== dateKey));
+        return;
+      }
+      if (dataMode !== 'demo') throw new Error('Your personal data is still initializing.');
       setCheckIns((prev) => {
         const next = prev.filter((c) => c.date !== dateKey);
         lunaraStorage.setCheckIns(next);
         return next;
       });
     },
-    [guardDemoOnlyMutation]
+    [dataMode]
   );
 
   const getCheckInByDate = useCallback(
@@ -418,15 +548,34 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 
   const saveJournal = useCallback(
-    (entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => {
+    async (entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => {
       const now = new Date().toISOString();
-      if (!guardDemoOnlyMutation()) {
-        return {
-          ...entry,
-          id: entry.id || `jr-${Date.now()}`,
-          createdAt: now,
-          updatedAt: now,
-        };
+      if (dataMode === 'authenticated') {
+        const result = entry.id
+          ? await journalService.update(entry.id, {
+              date: entry.date,
+              title: entry.title,
+              content: entry.content,
+              tags: entry.tags,
+            })
+          : await journalService.create({
+              date: entry.date,
+              title: entry.title,
+              content: entry.content,
+              tags: entry.tags,
+            });
+        if (!result.ok) throw new Error(result.error.message);
+        setJournals((prev) => {
+          const next = prev.some((journal) => journal.id === result.data.id)
+            ? prev.map((journal) => (journal.id === result.data.id ? result.data : journal))
+            : [result.data, ...prev];
+          next.sort((a, b) => b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt));
+          return next;
+        });
+        return result.data;
+      }
+      if (dataMode !== 'demo') {
+        throw new Error('Your personal data is still initializing.');
       }
       let savedRecord: JournalEntry | null = null;
       setJournals((prev) => {
@@ -455,31 +604,50 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       );
     },
-    [guardDemoOnlyMutation]
+    [dataMode]
   );
 
   const deleteJournal = useCallback(
-    (id: string) => {
-      if (!guardDemoOnlyMutation()) return;
+    async (id: string) => {
+      if (dataMode === 'authenticated') {
+        const result = await journalService.remove(id);
+        if (!result.ok) throw new Error(result.error.message);
+        setJournals((prev) => prev.filter((journal) => journal.id !== id));
+        return;
+      }
+      if (dataMode !== 'demo') throw new Error('Your personal data is still initializing.');
       setJournals((prev) => {
         const next = prev.filter((j) => j.id !== id);
         lunaraStorage.setJournals(next);
         return next;
       });
     },
-    [guardDemoOnlyMutation]
+    [dataMode]
   );
 
   const updateProfile = useCallback(
-    (patch: Partial<UserProfile>) => {
-      if (!guardDemoOnlyMutation()) return;
+    async (patch: Partial<UserProfile>) => {
+      if (dataMode === 'authenticated') {
+        setProfile((prev) => ({ ...prev, ...patch }));
+        const result = await profileService.upsertOwnProfile(patch);
+        if (!result.ok) throw new Error(result.error.message);
+        setProfile({
+          displayName: result.data.displayName,
+          preferredCheckInTime: result.data.preferredCheckInTime,
+          dailyReminderEnabled: result.data.dailyReminderEnabled,
+          reminderTime: result.data.reminderTime,
+          showGreetingPrompts: result.data.showGreetingPrompts,
+        });
+        return;
+      }
+      if (dataMode !== 'demo') throw new Error('Your personal data is still initializing.');
       setProfile((prev) => {
         const next = { ...prev, ...patch };
         lunaraStorage.setProfile(next);
         return next;
       });
     },
-    [guardDemoOnlyMutation]
+    [dataMode]
   );
 
   const updateParameters = useCallback(
@@ -516,14 +684,24 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const toggleFavoriteAffirmation = useCallback(
     (id: string) => {
-      if (!guardDemoOnlyMutation()) return;
+      if (dataMode === 'authenticated') {
+        const nextIds = favoriteAffirmationIds.includes(id)
+          ? favoriteAffirmationIds.filter((x) => x !== id)
+          : [...favoriteAffirmationIds, id];
+        setFavoriteAffirmationIds(nextIds);
+        void preferencesService.upsertOwnPreferences({ favoriteAffirmationIds: nextIds }).then((result) => {
+          if (!result.ok) showToastRef.current(result.error.message, 'amber');
+        });
+        return;
+      }
+      if (dataMode !== 'demo') return;
       setFavoriteAffirmationIds((prev) => {
         const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
         lunaraStorage.setFavoriteAffirmationIds(next);
         return next;
       });
     },
-    [guardDemoOnlyMutation]
+    [dataMode, favoriteAffirmationIds]
   );
 
   const addAffirmation = useCallback(
@@ -544,7 +722,7 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       appendAuditLog('Created Affirmation', `Added "${item.category}" affirmation (${item.status}).`);
       return created;
     },
-    [user, appendAuditLog]
+    [user, appendAuditLog, dataMode, adminUsers]
   );
 
   const updateAffirmation = useCallback(
@@ -557,7 +735,7 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
       appendAuditLog('Updated Affirmation', `Updated affirmation ${id}.`);
     },
-    [appendAuditLog]
+    [appendAuditLog, dataMode]
   );
 
   const deleteAffirmation = useCallback(
@@ -660,15 +838,31 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 
   const toggleBookmarkWisdom = useCallback(
-    (id: string) => {
-      if (!guardDemoOnlyMutation()) return;
+    async (id: string) => {
+      if (dataMode === 'authenticated') {
+        const willSave = !savedWisdomIds.includes(id);
+        setSavedWisdomIds((prev) =>
+          willSave ? [...prev, id] : prev.filter((savedId) => savedId !== id)
+        );
+        const result = willSave
+          ? await wisdomService.saveWisdom(id)
+          : await wisdomService.unsaveWisdom(id);
+        if (!result.ok) {
+          setSavedWisdomIds((prev) =>
+            willSave ? prev.filter((savedId) => savedId !== id) : [...prev, id]
+          );
+          throw new Error(result.error.message);
+        }
+        return;
+      }
+      if (dataMode !== 'demo') throw new Error('Your personal data is still initializing.');
       setSavedWisdomIds((prev) => {
         const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
         lunaraStorage.setSavedWisdomIds(next);
         return next;
       });
     },
-    [guardDemoOnlyMutation]
+    [dataMode, savedWisdomIds]
   );
 
   // Reflection Prompts
@@ -707,13 +901,47 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Notifications & Announcements
   const sendNotification = useCallback(
-    (payload: {
+    async (payload: {
       title: string;
       message: string;
       category: NotificationCategory;
+      targetUserId?: string;
       targetUserLabel?: string;
       targetUserName?: string;
     }) => {
+      if (dataMode === 'authenticated') {
+        if (payload.targetUserId) {
+          const result = await notificationService.createNotification({
+            targetUserId: payload.targetUserId,
+            title: payload.title,
+            message: payload.message,
+            category: payload.category,
+            sender: user?.name || 'Lunara Admin',
+          });
+          if (!result.ok) throw new Error(result.error.message);
+        } else {
+          const recipients = adminUsers;
+          for (const recipient of recipients) {
+            if (!recipient.id.startsWith('usr-')) {
+              const result = await notificationService.createNotification({
+                targetUserId: recipient.id,
+                title: payload.title,
+                message: payload.message,
+                category: payload.category,
+                sender: user?.name || 'Lunara Admin',
+              });
+              if (!result.ok) throw new Error(result.error.message);
+            }
+          }
+        }
+        appendAuditLog(
+          'Sent Notification',
+          `Sent "${payload.category}" message ("${payload.title.trim()}") to ${payload.targetUserLabel || 'selected users'}.`,
+          payload.targetUserName
+        );
+        return;
+      }
+      if (dataMode !== 'demo') throw new Error('Your personal data is still initializing.');
       const item: UserNotification = {
         id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
         title: payload.title.trim(),
@@ -779,48 +1007,76 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 
   const markNotificationRead = useCallback(
-    (id: string, read = true) => {
-      if (!guardDemoOnlyMutation()) return;
+    async (id: string, read = true) => {
+      if (dataMode === 'authenticated') {
+        const result = await notificationService.markRead(id, read);
+        if (!result.ok) throw new Error(result.error.message);
+        setNotifications((prev) => prev.map((notification) =>
+          notification.id === id ? result.data : notification
+        ));
+        return;
+      }
+      if (dataMode !== 'demo') throw new Error('Your personal data is still initializing.');
       setNotifications((prev) => {
         const next = prev.map((n) => (n.id === id ? { ...n, read } : n));
         lunaraStorage.setNotifications(next);
         return next;
       });
     },
-    [guardDemoOnlyMutation]
+    [dataMode]
   );
 
-  const markAllNotificationsRead = useCallback(() => {
-    if (!guardDemoOnlyMutation()) return;
+  const markAllNotificationsRead = useCallback(async () => {
+    if (dataMode === 'authenticated') {
+      const result = await notificationService.markAllRead();
+      if (!result.ok) throw new Error(result.error.message);
+      setNotifications((prev) => prev.map((notification) => ({ ...notification, read: true })));
+      return;
+    }
+    if (dataMode !== 'demo') throw new Error('Your personal data is still initializing.');
     setNotifications((prev) => {
       const next = prev.map((n) => ({ ...n, read: true }));
       lunaraStorage.setNotifications(next);
       return next;
     });
-  }, [guardDemoOnlyMutation]);
+  }, [dataMode]);
 
   const deleteNotification = useCallback(
-    (id: string) => {
-      if (!guardDemoOnlyMutation()) return;
+    async (id: string) => {
+      if (dataMode === 'authenticated') {
+        const result = await notificationService.remove(id);
+        if (!result.ok) throw new Error(result.error.message);
+        setNotifications((prev) => prev.filter((notification) => notification.id !== id));
+        return;
+      }
+      if (dataMode !== 'demo') throw new Error('Your personal data is still initializing.');
       setNotifications((prev) => {
         const next = prev.filter((n) => n.id !== id);
         lunaraStorage.setNotifications(next);
         return next;
       });
     },
-    [guardDemoOnlyMutation]
+    [dataMode]
   );
 
   const updateNotificationPrefs = useCallback(
-    (patch: Partial<NotificationPreferences>) => {
-      if (!guardDemoOnlyMutation()) return;
+    async (patch: Partial<NotificationPreferences>) => {
+      if (dataMode === 'authenticated') {
+        const next = { ...notificationPrefs, ...patch };
+        setNotificationPrefs(next);
+        const result = await preferencesService.upsertOwnPreferences({ notificationPrefs: patch });
+        if (!result.ok) throw new Error(result.error.message);
+        setNotificationPrefs(result.data.notificationPrefs);
+        return;
+      }
+      if (dataMode !== 'demo') throw new Error('Your personal data is still initializing.');
       setNotificationPrefs((prev) => {
         const next = { ...prev, ...patch };
         lunaraStorage.setNotificationPrefs(next);
         return next;
       });
     },
-    [guardDemoOnlyMutation]
+    [dataMode, notificationPrefs]
   );
 
   const unreadNotificationCount = useMemo(
@@ -831,6 +1087,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Prototype User Directory
   const addAdminUser = useCallback(
     (newUser: Omit<AdminUserPrototype, 'id' | 'joinedDate' | 'lastActive'>) => {
+      if (dataMode === 'authenticated') {
+        throw new Error('Use Supabase Auth to create real accounts; Lunara does not invite users from the client.');
+      }
       const created: AdminUserPrototype = {
         ...newUser,
         id: `usr-${Date.now()}`,
@@ -847,11 +1106,25 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       appendAuditLog('Added Prototype User', `Added ${created.name} (${created.role}) to prototype directory.`, created.name);
       return created;
     },
-    [appendAuditLog]
+    [appendAuditLog, dataMode, showToast]
   );
 
   const updateAdminUser = useCallback(
     (id: string, patch: Partial<AdminUserPrototype>) => {
+      if (dataMode === 'authenticated' && patch.role) {
+        const backendRole = patch.role === 'Admin' ? 'admin' : 'user';
+        void roleService.setUserRole(id, backendRole).then((result) => {
+          if (!result.ok) {
+            showToastRef.current(result.error.message, 'amber');
+            return;
+          }
+          if (dataMode === 'authenticated') return;
+          setAdminUsers((prev) => prev.map((user) =>
+            user.id === id ? { ...user, role: patch.role as AdminUserPrototype['role'] } : user
+          ));
+        });
+        return;
+      }
       setAdminUsers((prev) => {
         const target = prev.find((u) => u.id === id);
         const next = prev.map((u) => (u.id === id ? { ...u, ...patch } : u));
@@ -866,7 +1139,7 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return next;
       });
     },
-    [appendAuditLog]
+    [appendAuditLog, dataMode]
   );
 
   const hasSampleData = useMemo(

@@ -117,9 +117,13 @@ export const NotificationsPage: React.FC = () => {
           unreadNotificationCount > 0 ? (
             <button
               type="button"
-              onClick={() => {
-                markAllNotificationsRead();
-                showToast('All notifications marked as read.', 'blue');
+              onClick={async () => {
+                try {
+                  await markAllNotificationsRead();
+                  showToast('All notifications marked as read.', 'blue');
+                } catch (error) {
+                  showToast(error instanceof Error ? error.message : 'Could not mark notifications as read.', 'amber');
+                }
               }}
               className="inline-flex items-center gap-1.5 min-h-[38px] px-3.5 rounded-[12px] bg-white/16 hover:bg-white/25 border border-white/20 text-xs font-medium text-white transition-colors cursor-pointer whitespace-nowrap"
             >
@@ -227,7 +231,13 @@ export const NotificationsPage: React.FC = () => {
                         <IconButton
                           label={notif.read ? 'Mark as unread' : 'Mark as read'}
                           size="sm"
-                          onClick={() => markNotificationRead(notif.id, !notif.read)}
+                          onClick={async () => {
+                            try {
+                              await markNotificationRead(notif.id, !notif.read);
+                            } catch (error) {
+                              showToast(error instanceof Error ? error.message : 'Could not update the notification.', 'amber');
+                            }
+                          }}
                         >
                           {notif.read ? (
                             <MailOpen className="w-4 h-4 text-[var(--text-muted)]" />
@@ -238,7 +248,13 @@ export const NotificationsPage: React.FC = () => {
                         <IconButton
                           label="Dismiss notification"
                           size="sm"
-                          onClick={() => deleteNotification(notif.id)}
+                          onClick={async () => {
+                            try {
+                              await deleteNotification(notif.id);
+                            } catch (error) {
+                              showToast(error instanceof Error ? error.message : 'Could not dismiss the notification.', 'amber');
+                            }
+                          }}
                         >
                           <Trash2 className="w-4 h-4 text-[var(--coral-strong)]" />
                         </IconButton>

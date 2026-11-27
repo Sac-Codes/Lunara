@@ -6,3 +6,4 @@ export * from './profileService';
 export * from './preferencesService';
 export * from './notificationService';
 export * from './roleService';
+export * from './adminService';

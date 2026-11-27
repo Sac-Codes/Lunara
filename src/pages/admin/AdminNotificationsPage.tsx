@@ -47,26 +47,29 @@ export const AdminNotificationsPage: React.FC = () => {
     [adminUsers, targetUserId]
   );
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) return;
-
-    sendNotification({
-      title: title.trim(),
-      message: message.trim(),
-      category,
-      targetUserLabel: targetUser ? `${targetUser.name} (${targetUser.email})` : 'All prototype users',
-      targetUserName: targetUser?.name,
-    });
-
-    showToast(
-      targetUser
-        ? `Prototype notification delivered for ${targetUser.name} (visible in local Inbox).`
-        : 'Notification delivered to local prototype Inbox.',
-      'lavender'
-    );
-    setTitle('');
-    setMessage('');
+    try {
+      await sendNotification({
+        title: title.trim(),
+        message: message.trim(),
+        category,
+        targetUserId: targetUser ? targetUser.id : undefined,
+        targetUserLabel: targetUser ? `${targetUser.name} (${targetUser.email})` : 'All Lunara users',
+        targetUserName: targetUser?.name,
+      });
+      showToast(
+        targetUser
+          ? `Notification delivered to ${targetUser.name}.`
+          : 'Notification delivered to Lunara users.',
+        'lavender'
+      );
+      setTitle('');
+      setMessage('');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not send the notification.', 'amber');
+    }
   };
 
   return (
@@ -80,7 +83,7 @@ export const AdminNotificationsPage: React.FC = () => {
       <div className="rounded-[16px] bg-[var(--surface-amber)]/75 px-4 py-3 flex items-start gap-2.5 text-xs text-[var(--amber-strong)]">
         <Info className="w-4 h-4 shrink-0 mt-0.5" />
         <span>
-          Prototype communication note: messages sent here appear immediately inside the local user Notification Center (`/notifications`) on this device. Multi-user push delivery requires a backend.
+          Verified-admin communication: messages are delivered to the selected real Lunara account or all registered Lunara accounts.
         </span>
       </div>
 

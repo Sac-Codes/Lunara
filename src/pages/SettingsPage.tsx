@@ -107,11 +107,10 @@ export const SettingsPage: React.FC = () => {
                 key={sec.id}
                 type="button"
                 onClick={() => setActiveSection(sec.id)}
-                className={`flex items-center gap-3 min-h-[44px] px-4 py-2.5 rounded-[14px] text-sm font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-                  active
+                className={`flex items-center gap-3 min-h-[44px] px-4 py-2.5 rounded-[14px] text-sm font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${active
                     ? 'bg-[var(--surface-lavender)] text-[var(--lavender-strong)]'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-main)]/70'
-                }`}
+                  }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 <span>{sec.label}</span>
@@ -222,11 +221,10 @@ export const SettingsPage: React.FC = () => {
                       type="button"
                       onClick={() => setThemeMode(opt.id)}
                       aria-pressed={active}
-                      className={`text-left rounded-[18px] p-4 transition-all cursor-pointer ${
-                        active
+                      className={`text-left rounded-[18px] p-4 transition-all cursor-pointer ${active
                           ? 'bg-[var(--surface-lavender)] text-[var(--lavender-strong)] ring-1 ring-[#B18ACD]/50'
                           : 'bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                      }`}
+                        }`}
                     >
                       <Icon className="w-5 h-5" />
                       <div className="mt-3 text-sm font-medium text-[var(--text-primary)]">
@@ -261,11 +259,10 @@ export const SettingsPage: React.FC = () => {
                       key={slot}
                       type="button"
                       onClick={() => updateProfile({ preferredCheckInTime: slot })}
-                      className={`min-h-[40px] px-4 rounded-[12px] text-xs sm:text-sm font-medium capitalize transition-colors cursor-pointer ${
-                        profile.preferredCheckInTime === slot
+                      className={`min-h-[40px] px-4 rounded-[12px] text-xs sm:text-sm font-medium capitalize transition-colors cursor-pointer ${profile.preferredCheckInTime === slot
                           ? 'bg-[#304A70] text-white dark:bg-[#78A6E7] dark:text-[#152031]'
                           : 'bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                      }`}
+                        }`}
                     >
                       {slot === 'anytime' ? 'Any time' : `${slot} reflection`}
                     </button>
@@ -289,16 +286,14 @@ export const SettingsPage: React.FC = () => {
                   onClick={() =>
                     updateProfile({ showGreetingPrompts: !profile.showGreetingPrompts })
                   }
-                  className={`relative w-12 h-7 rounded-full transition-colors cursor-pointer shrink-0 ${
-                    profile.showGreetingPrompts
+                  className={`relative w-12 h-7 rounded-full transition-colors cursor-pointer shrink-0 ${profile.showGreetingPrompts
                       ? 'bg-[#795D96] dark:bg-[#B18ACD]'
                       : 'bg-[var(--surface-secondary)] border border-[var(--border-medium)]'
-                  }`}
+                    }`}
                 >
                   <span
-                    className={`block w-5 h-5 rounded-full bg-white shadow-xs transition-transform ${
-                      profile.showGreetingPrompts ? 'translate-x-6' : 'translate-x-1'
-                    }`}
+                    className={`block w-5 h-5 rounded-full bg-white shadow-xs transition-transform ${profile.showGreetingPrompts ? 'translate-x-6' : 'translate-x-1'
+                      }`}
                   />
                 </button>
               </div>
@@ -345,16 +340,14 @@ export const SettingsPage: React.FC = () => {
                         role="switch"
                         aria-checked={enabled}
                         onClick={() => updateNotificationPrefs({ [item.key]: !enabled })}
-                        className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${
-                          enabled
+                        className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${enabled
                             ? 'bg-[#795D96] dark:bg-[#B18ACD]'
                             : 'bg-[var(--surface-secondary)] border border-[var(--border-medium)]'
-                        }`}
+                          }`}
                       >
                         <span
-                          className={`block w-4 h-4 rounded-full bg-white shadow-xs transition-transform ${
-                            enabled ? 'translate-x-6' : 'translate-x-1'
-                          }`}
+                          className={`block w-4 h-4 rounded-full bg-white shadow-xs transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
                         />
                       </button>
                     </div>
@@ -393,25 +386,26 @@ export const SettingsPage: React.FC = () => {
                   Export JSON backup
                 </Button>
 
-                {hasSampleData ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearSampleJourney}
-                    leftIcon={<Trash2 className="w-4 h-4" />}
-                  >
-                    Remove sample week
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={loadSampleJourney}
-                    leftIcon={<Sparkles className="w-4 h-4" />}
-                  >
-                    Load sample week
-                  </Button>
-                )}
+                {dataMode === 'demo' &&
+                  (hasSampleData ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearSampleJourney}
+                      leftIcon={<Trash2 className="w-4 h-4" />}
+                    >
+                      Remove sample week
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={loadSampleJourney}
+                      leftIcon={<Sparkles className="w-4 h-4" />}
+                    >
+                      Load sample week
+                    </Button>
+                  ))}
 
                 <Button
                   variant="ghost"

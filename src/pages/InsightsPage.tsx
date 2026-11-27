@@ -30,7 +30,7 @@ function averageMetric(values: Array<number | null>): string {
 }
 
 export const InsightsPage: React.FC = () => {
-  const { checkIns, journals, loadSampleJourney, dailyWisdom } = useLunara();
+  const { dataMode, checkIns, journals, loadSampleJourney, dailyWisdom } = useLunara();
   const [range, setRange] = useState<TimeRange>('30d');
 
   const todayKey = toDateKey();
@@ -201,7 +201,7 @@ export const InsightsPage: React.FC = () => {
                 Record a check-in
               </Button>
             </Link>
-            {checkIns.length === 0 && (
+            {dataMode === 'demo' && checkIns.length === 0 && (
               <Button
                 variant="outline"
                 size="md"

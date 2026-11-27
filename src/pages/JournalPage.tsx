@@ -165,33 +165,42 @@ export const JournalPage: React.FC = () => {
     setTagInput('');
   };
 
-  const handleSaveDraft = (e: React.FormEvent) => {
+  const handleSaveDraft = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!draftTitle.trim() && !draftContent.trim()) {
       setEditorError('Write a few words or add a title before saving your entry.');
       return;
     }
-    const saved = saveJournal({
-      id: draftId,
-      date: draftDate,
-      title: draftTitle.trim() || 'Untitled reflection',
-      content: draftContent.trim(),
-      tags: draftTags,
-    });
-    setSelectedId(saved.id);
-    setMode('read');
-    showToast(draftId ? 'Journal entry updated.' : 'Journal entry saved.', 'rose');
+    try {
+      const saved = await saveJournal({
+        id: draftId,
+        date: draftDate,
+        title: draftTitle.trim() || 'Untitled reflection',
+        content: draftContent.trim(),
+        tags: draftTags,
+      });
+      setSelectedId(saved.id);
+      setMode('read');
+      showToast(draftId ? 'Journal entry updated.' : 'Journal entry saved.', 'rose');
+    } catch (error) {
+      setEditorError(error instanceof Error ? error.message : 'Could not save your journal entry.');
+    }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deleteTargetId) return;
-    deleteJournal(deleteTargetId);
-    if (selectedId === deleteTargetId) {
-      setSelectedId(null);
-      setMode('browse');
+    try {
+      await deleteJournal(deleteTargetId);
+      if (selectedId === deleteTargetId) {
+        setSelectedId(null);
+        setMode('browse');
+      }
+      setDeleteTargetId(null);
+      showToast('Journal entry deleted.', 'lavender');
+    } catch (error) {
+      setEditorError(error instanceof Error ? error.message : 'Could not delete your journal entry.');
+      setDeleteTargetId(null);
     }
-    setDeleteTargetId(null);
-    showToast('Journal entry deleted.', 'lavender');
   };
 
   if (journals.length === 0 && mode !== 'edit') {

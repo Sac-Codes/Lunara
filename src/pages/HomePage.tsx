@@ -91,6 +91,7 @@ const TOPIC_SURFACES: Record<WisdomTopic, { bg: string; text: string }> = {
 
 export const HomePage: React.FC = () => {
   const {
+    dataMode,
     checkIns,
     saveCheckIn,
     journals,
@@ -165,62 +166,79 @@ export const HomePage: React.FC = () => {
     [notifications]
   );
 
-  const handleQuickMoodSelect = (moodId: MoodId) => {
+  const handleQuickMoodSelect = async (moodId: MoodId) => {
     const nextMood = todayCheckIn?.mood === moodId ? null : moodId;
-    saveCheckIn({
-      date: todayKey,
-      mood: nextMood,
-      happiness: todayCheckIn?.happiness ?? null,
-      energy: todayCheckIn?.energy ?? null,
-      stress: todayCheckIn?.stress ?? null,
-      likes: todayCheckIn?.likes ?? [],
-      dislikes: todayCheckIn?.dislikes ?? [],
-      notes: todayCheckIn?.notes ?? '',
-      customValues: todayCheckIn?.customValues,
-    });
-    if (nextMood) {
-      const label = MOOD_MAP[nextMood].label;
-      showToast(`Today's mood noted as ${label.toLowerCase()}.`, 'lavender');
-    } else {
-      showToast("Cleared today's mood selection.", 'blue');
+    try {
+      await saveCheckIn({
+        date: todayKey,
+        mood: nextMood,
+        happiness: todayCheckIn?.happiness ?? null,
+        energy: todayCheckIn?.energy ?? null,
+        stress: todayCheckIn?.stress ?? null,
+        likes: todayCheckIn?.likes ?? [],
+        dislikes: todayCheckIn?.dislikes ?? [],
+        notes: todayCheckIn?.notes ?? '',
+        customValues: todayCheckIn?.customValues,
+        activities: todayCheckIn?.activities,
+        customActivities: todayCheckIn?.customActivities,
+        proudOf: todayCheckIn?.proudOf,
+        needs: todayCheckIn?.needs,
+        tomorrowIntention: todayCheckIn?.tomorrowIntention,
+      });
+      if (nextMood) {
+        const label = MOOD_MAP[nextMood].label;
+        showToast(`Today's mood noted as ${label.toLowerCase()}.`, 'lavender');
+      } else {
+        showToast("Cleared today's mood selection.", 'blue');
+      }
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not update today’s mood.', 'amber');
     }
   };
 
-  const handleQuickReflectionSave = (e: React.FormEvent) => {
+  const handleQuickReflectionSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const content = quickReflection.trim();
     if (!content) {
       showToast('Write a brief thought before saving to your journal.', 'amber');
       return;
     }
-    const created = saveJournal({
-      date: todayKey,
-      title: 'What brought peace today',
-      content,
-      tags: ['Daily Reflection'],
-    });
-    setQuickReflection('');
-    setQuickSavedId(created.id);
-    showToast('Saved to your personal journal.', 'rose');
+    try {
+      const created = await saveJournal({
+        date: todayKey,
+        title: 'What brought peace today',
+        content,
+        tags: ['Daily Reflection'],
+      });
+      setQuickReflection('');
+      setQuickSavedId(created.id);
+      showToast('Saved to your personal journal.', 'rose');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not save your reflection.', 'amber');
+    }
   };
 
   const isDailyWisdomSaved = dailyWisdom ? savedWisdomIds.includes(dailyWisdom.id) : false;
 
-  const handleToggleDailyWisdomBookmark = () => {
+  const handleToggleDailyWisdomBookmark = async () => {
     if (!dailyWisdom) return;
-    toggleBookmarkWisdom(dailyWisdom.id);
-    showToast(
-      isDailyWisdomSaved
-        ? 'Removed from saved wisdom.'
-        : `Saved Bhagavad Gita ${dailyWisdom.chapter}:${dailyWisdom.verse}.`,
-      'amber'
-    );
+    try {
+      await toggleBookmarkWisdom(dailyWisdom.id);
+      showToast(
+        isDailyWisdomSaved
+          ? 'Removed from saved wisdom.'
+          : `Saved Bhagavad Gita ${dailyWisdom.chapter}:${dailyWisdom.verse}.`,
+        'amber'
+      );
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not update saved wisdom.', 'amber');
+    }
   };
 
   return (
     <div className="space-y-6 lg:space-y-7">
       {/* Sample data notice when active */}
-      {hasSampleData && (
+      {dataMode === 'demo' && hasSampleData && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] bg-[var(--surface-blue)]/85 border border-[var(--border-subtle)] px-4 py-3 text-xs sm:text-sm text-[var(--blue-strong)]">
           <span>
             Previewing with a sample week alongside your personal entries.
@@ -313,7 +331,7 @@ export const HomePage: React.FC = () => {
               </button>
             </Link>
 
-            {checkIns.length === 0 && journals.length === 0 && (
+            {dataMode === 'demo' && checkIns.length === 0 && journals.length === 0 && (
               <button
                 type="button"
                 onClick={loadSampleJourney}

@@ -220,8 +220,14 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setCheckIns([]);
       setJournals([]);
       setProfile(EMPTY_PROFILE);
-      setSavedWisdomIds([]);
+      setParameters(DEFAULT_CHECKIN_PARAMETERS);
+      setAdminConfig(DEFAULT_ADMIN_CONFIG);
+      setAffirmations(DEFAULT_AFFIRMATIONS);
       setFavoriteAffirmationIds([]);
+      setWisdomEntries(DEFAULT_WISDOM_ENTRIES);
+      setSavedWisdomIds([]);
+      setReflectionPrompts(DEFAULT_REFLECTION_PROMPTS);
+      setAnnouncements([]);
       setNotifications([]);
       setNotificationPrefs(DEFAULT_NOTIFICATION_PREFS);
       setAdminUsers([]);

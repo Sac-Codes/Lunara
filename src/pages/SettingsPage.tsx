@@ -78,8 +78,12 @@ export const SettingsPage: React.FC = () => {
     showToast('Reflections exported as JSON.', 'blue');
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    const result = await logout();
+    if (!result.ok) {
+      showToast(result.error || 'Could not sign out safely.', 'amber');
+      return;
+    }
     showToast('Signed out of Lunara.', 'lavender');
     navigate('/login', { replace: true });
   };

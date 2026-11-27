@@ -51,8 +51,12 @@ export const AdminLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    const result = await logout();
+    if (!result.ok) {
+      showToast(result.error || 'Could not sign out safely.', 'amber');
+      return;
+    }
     showToast('Signed out of Lunara Admin.', 'blue');
     navigate('/login', { replace: true });
   };

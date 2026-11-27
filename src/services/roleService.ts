@@ -24,7 +24,10 @@ export const roleService = {
       .maybeSingle();
 
     if (error) return mapSupabaseError(error);
-    return ok(data?.role ?? 'user');
+    if (!data) {
+      return fail('NOT_FOUND', 'Your Lunara account role is missing.');
+    }
+    return ok(data.role);
   },
 
   /**

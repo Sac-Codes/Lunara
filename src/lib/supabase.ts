@@ -10,10 +10,17 @@ const supabasePublishableKey =
  * and do not contain template placeholder values.
  */
 export const isSupabaseConfigured: boolean = Boolean(
-  supabaseUrl &&
-    supabasePublishableKey &&
-    !supabaseUrl.includes('your-project-ref') &&
-    !supabasePublishableKey.includes('your-supabase-publishable')
+  (() => {
+    if (!supabaseUrl || !supabasePublishableKey) return false;
+    if (supabaseUrl.includes('your-project-ref')) return false;
+    if (supabasePublishableKey.includes('your-supabase-publishable')) return false;
+    try {
+      const parsed = new URL(supabaseUrl);
+      return parsed.protocol === 'https:' && Boolean(parsed.hostname);
+    } catch {
+      return false;
+    }
+  })()
 );
 
 let clientInstance: SupabaseClient<Database> | null = null;

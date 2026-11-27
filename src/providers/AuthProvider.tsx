@@ -97,12 +97,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (!result.ok) {
-          // If role/user verification fails (e.g., expired/invalid session), clear user safely.
           setUser(null);
+          setIsLoading(false);
+          return null;
+        }
+
+        if (!result.data) {
+          setUser(null);
+          setIsLoading(false);
           return null;
         }
 
         setUser(result.data);
+        setIsLoading(false);
         return result.data;
       })();
 
@@ -169,17 +176,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (event === 'SIGNED_OUT' || !session?.user) {
-        if (userRef.current?.authMode === 'simulated-preview') {
-          return;
-        }
         hydrationSeqRef.current += 1;
         setUser(null);
+        setIsLoading(false);
         return;
       }
 
       if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
         const targetUserId = session.user.id;
         const forceRefresh = event === 'USER_UPDATED';
+        if (userRef.current?.authMode !== 'supabase' || userRef.current.id !== targetUserId) {
+          setUser(null);
+          setIsLoading(true);
+        }
         window.setTimeout(() => {
           if (!active || !mountedRef.current) return;
           void hydrateSupabaseUser(targetUserId, forceRefresh);
@@ -223,22 +232,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       remember: boolean
     ): Promise<AuthActionResult> => {
       if (!isSupabaseConfigured) {
-        const result = await mockAuthService.signInWithEmail({ email, password });
-        if (!result.ok) {
-          return { ok: false, error: result.error };
-        }
-        updateRememberedEmail(result.user.email, remember);
-        setUser(result.user);
-        return { ok: true };
+        return {
+          ok: false,
+          error: 'Authentication is unavailable because Supabase is not configured.',
+        };
       }
+
+      hydrationSeqRef.current += 1;
+      setUser(null);
+      setIsLoading(true);
 
       const result = await authService.signIn(email, password);
       if (!result.ok) {
+        setIsLoading(false);
         return { ok: false, error: result.error.message };
       }
 
       updateRememberedEmail(result.data.user.email ?? email.trim().toLowerCase(), remember);
-      await hydrateSupabaseUser(result.data.user.id);
+      const hydratedUser = await hydrateSupabaseUser(result.data.user.id);
+      if (!hydratedUser || hydratedUser.id !== result.data.user.id) {
+        setUser(null);
+        setIsLoading(false);
+        return {
+          ok: false,
+          error: 'Your session could not be verified. Please try signing in again.',
+        };
+      }
       return { ok: true };
     },
     [hydrateSupabaseUser, updateRememberedEmail]
@@ -263,7 +282,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (result.data.session && result.data.user) {
-        await hydrateSupabaseUser(result.data.user.id);
+        setUser(null);
+        setIsLoading(true);
+        const hydratedUser = await hydrateSupabaseUser(result.data.user.id);
+        if (!hydratedUser || hydratedUser.id !== result.data.user.id) {
+          setUser(null);
+          setIsLoading(false);
+          return {
+            ok: false,
+            error: 'Your account was created, but its profile could not be verified. Please sign in after confirmation.',
+          };
+        }
+        setIsLoading(false);
       }
 
       return {
@@ -325,20 +355,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(async (): Promise<AuthActionResult> => {
     hydrationSeqRef.current += 1;
+    setIsLoading(true);
+    setUser(null);
 
     if (!isSupabaseConfigured || user?.authMode !== 'supabase') {
       setUser(null);
+      setIsLoading(false);
       return { ok: true };
     }
 
     try {
       const result = await authService.signOut();
       if (!result.ok) {
+        setIsLoading(false);
         return { ok: false, error: result.error.message };
       }
-      return { ok: true };
-    } finally {
       setUser(null);
+      setIsLoading(false);
+      return { ok: true };
+    } catch {
+      setUser(null);
+      setIsLoading(false);
+      return { ok: false, error: 'Logout failed because the Supabase session could not be cleared.' };
     }
   }, [user?.authMode]);
 

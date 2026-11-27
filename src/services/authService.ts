@@ -228,8 +228,21 @@ export const authService = {
       profileService.getOwnProfile(),
     ]);
 
+    if (!roleResult.ok) {
+      return roleResult;
+    }
+    if (!profileResult.ok) {
+      return profileResult;
+    }
+    if (!profileResult.data) {
+      return fail(
+        'NOT_FOUND',
+        'Your Lunara profile is missing. Please sign in again or contact support.'
+      );
+    }
+
     const resolvedRole: UserRole =
-      roleResult.ok && roleResult.data === 'admin' ? 'admin' : 'user';
+      roleResult.data === 'admin' ? 'admin' : 'user';
 
     const email = data.user.email ?? '';
     const profileDisplayName = profileResult.ok ? profileResult.data?.displayName : undefined;

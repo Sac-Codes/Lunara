@@ -4,6 +4,8 @@ import type {
   ThemeMode,
   UserProfile,
   UserRole,
+  WisdomEntry,
+  WisdomTopic,
 } from './lunara';
 
 export type Json =
@@ -194,6 +196,69 @@ export interface Database {
           user_id?: string;
           wisdom_id?: string;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      wisdom_content: {
+        Row: {
+          id: string;
+          title: string;
+          scripture: WisdomEntry['scripture'];
+          chapter: number;
+          verse: string;
+          sanskrit: string;
+          transliteration: string;
+          meaning: string;
+          learning: string;
+          reflection_prompt: string;
+          takeaway: string;
+          topic: WisdomTopic;
+          source_note: string;
+          status: WisdomEntry['status'];
+          is_featured: boolean;
+          is_daily: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          scripture?: WisdomEntry['scripture'];
+          chapter: number;
+          verse: string;
+          sanskrit: string;
+          transliteration?: string;
+          meaning: string;
+          learning?: string;
+          reflection_prompt: string;
+          takeaway: string;
+          topic: WisdomTopic;
+          source_note?: string;
+          status?: WisdomEntry['status'];
+          is_featured?: boolean;
+          is_daily?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          scripture?: WisdomEntry['scripture'];
+          chapter?: number;
+          verse?: string;
+          sanskrit?: string;
+          transliteration?: string;
+          meaning?: string;
+          learning?: string;
+          reflection_prompt?: string;
+          takeaway?: string;
+          topic?: WisdomTopic;
+          source_note?: string;
+          status?: WisdomEntry['status'];
+          is_featured?: boolean;
+          is_daily?: boolean;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };

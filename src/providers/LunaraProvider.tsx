@@ -19,6 +19,7 @@ import { notificationService } from '../services/notificationService';
 import { preferencesService } from '../services/preferencesService';
 import { profileService } from '../services/profileService';
 import { roleService } from '../services/roleService';
+import { sharedWisdomService } from '../services/sharedWisdomService';
 import { wisdomService } from '../services/wisdomService';
 import { useAuth } from './AuthProvider';
 import type {
@@ -99,11 +100,14 @@ interface LunaraContextValue {
   wisdomEntries: WisdomEntry[];
   publishedWisdom: WisdomEntry[];
   dailyWisdom: WisdomEntry | null;
+  wisdomLoading: boolean;
+  wisdomError: string | null;
+  refreshWisdom: () => Promise<void>;
   savedWisdomIds: string[];
-  addWisdom: (item: Omit<WisdomEntry, 'id' | 'createdAt' | 'updatedAt'>) => WisdomEntry;
-  updateWisdom: (id: string, patch: Partial<WisdomEntry>) => void;
-  deleteWisdom: (id: string) => void;
-  setDailyWisdom: (id: string) => void;
+  addWisdom: (item: Omit<WisdomEntry, 'id' | 'createdAt' | 'updatedAt'>) => Promise<WisdomEntry>;
+  updateWisdom: (id: string, patch: Partial<WisdomEntry>) => Promise<void>;
+  deleteWisdom: (id: string) => Promise<void>;
+  setDailyWisdom: (id: string) => Promise<void>;
   toggleBookmarkWisdom: (id: string) => Promise<void>;
 
   // Reflection Prompts
@@ -199,7 +203,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [affirmations, setAffirmations] = useState<AffirmationItem[]>(DEFAULT_AFFIRMATIONS);
   const [favoriteAffirmationIds, setFavoriteAffirmationIds] = useState<string[]>([]);
-  const [wisdomEntries, setWisdomEntries] = useState<WisdomEntry[]>(DEFAULT_WISDOM_ENTRIES);
+  const [wisdomEntries, setWisdomEntries] = useState<WisdomEntry[]>([]);
+  const [wisdomLoading, setWisdomLoading] = useState(false);
+  const [wisdomError, setWisdomError] = useState<string | null>(null);
   const [savedWisdomIds, setSavedWisdomIds] = useState<string[]>([]);
   const [reflectionPrompts, setReflectionPrompts] =
     useState<ReflectionPromptItem[]>(DEFAULT_REFLECTION_PROMPTS);
@@ -224,7 +230,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setAdminConfig(DEFAULT_ADMIN_CONFIG);
       setAffirmations(DEFAULT_AFFIRMATIONS);
       setFavoriteAffirmationIds([]);
-      setWisdomEntries(DEFAULT_WISDOM_ENTRIES);
+      setWisdomEntries([]);
+      setWisdomLoading(true);
+      setWisdomError(null);
       setSavedWisdomIds([]);
       setReflectionPrompts(DEFAULT_REFLECTION_PROMPTS);
       setAnnouncements([]);
@@ -244,6 +252,8 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setAffirmations(DEFAULT_AFFIRMATIONS);
       setFavoriteAffirmationIds([]);
       setWisdomEntries(DEFAULT_WISDOM_ENTRIES);
+      setWisdomLoading(false);
+      setWisdomError(null);
       setSavedWisdomIds([]);
       setReflectionPrompts(DEFAULT_REFLECTION_PROMPTS);
       setAnnouncements(DEFAULT_ANNOUNCEMENTS);
@@ -270,7 +280,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setAdminConfig(DEFAULT_ADMIN_CONFIG);
       setAffirmations(DEFAULT_AFFIRMATIONS);
       setFavoriteAffirmationIds([]);
-      setWisdomEntries(DEFAULT_WISDOM_ENTRIES);
+      setWisdomEntries([]);
+      setWisdomLoading(true);
+      setWisdomError(null);
       setSavedWisdomIds([]);
       setReflectionPrompts(DEFAULT_REFLECTION_PROMPTS);
       setAnnouncements([]);
@@ -287,6 +299,7 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             profileResult,
             preferencesResult,
             savedWisdomResult,
+            wisdomResult,
             notificationsResult,
           ] = await Promise.all([
             checkInService.listByUser(),
@@ -294,6 +307,7 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             profileService.getOwnProfile(),
             preferencesService.getOwnPreferences(),
             wisdomService.listSavedIds(),
+            sharedWisdomService.listWisdom(),
             notificationService.listOwnNotifications(),
           ]);
           if (!mountedRef.current || version !== contextVersionRef.current) {
@@ -317,6 +331,13 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             setNotificationPrefs(preferencesResult.data.notificationPrefs);
           }
           if (savedWisdomResult.ok) setSavedWisdomIds(savedWisdomResult.data);
+          if (wisdomResult.ok) {
+            setWisdomEntries(wisdomResult.data);
+            setWisdomError(null);
+          } else {
+            setWisdomEntries([]);
+            setWisdomError(wisdomResult.error.message);
+          }
           if (notificationsResult.ok) setNotifications(notificationsResult.data);
           if (user.role === 'admin') {
             const adminUsersResult = await adminService.listUsers();
@@ -332,6 +353,7 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             profileResult,
             preferencesResult,
             savedWisdomResult,
+            wisdomResult,
             notificationsResult,
           ].filter((result) => !result.ok);
           if (failures.length > 0) {
@@ -342,9 +364,12 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             return;
           }
           setCheckIns([]);
+          setWisdomEntries([]);
+          setWisdomError('Shared wisdom could not be loaded. Please retry.');
           showToastRef.current('Could not load your saved check-ins.', 'amber');
         } finally {
           if (mountedRef.current && version === contextVersionRef.current) {
+            setWisdomLoading(false);
             setHydratedContextKey(targetContextKey);
           }
         }
@@ -364,6 +389,8 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setAffirmations(lunaraStorage.getAffirmations());
     setFavoriteAffirmationIds(lunaraStorage.getFavoriteAffirmationIds());
     setWisdomEntries(lunaraStorage.getWisdomEntries());
+    setWisdomLoading(false);
+    setWisdomError(null);
     setSavedWisdomIds(lunaraStorage.getSavedWisdomIds());
     setReflectionPrompts(lunaraStorage.getReflectionPrompts());
     setAnnouncements(lunaraStorage.getAnnouncements());
@@ -757,6 +784,31 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 
   // Wisdom (Bhagavad Gita)
+  const refreshWisdom = useCallback(async () => {
+    if (dataMode !== 'authenticated') return;
+
+    const version = contextVersionRef.current;
+    setWisdomLoading(true);
+    setWisdomError(null);
+    try {
+      const result = await sharedWisdomService.listWisdom();
+      if (!mountedRef.current || version !== contextVersionRef.current) return;
+      if (result.ok) {
+        setWisdomEntries(result.data);
+      } else {
+        setWisdomError(result.error.message);
+      }
+    } catch {
+      if (mountedRef.current && version === contextVersionRef.current) {
+        setWisdomError('Shared wisdom could not be loaded. Please retry.');
+      }
+    } finally {
+      if (mountedRef.current && version === contextVersionRef.current) {
+        setWisdomLoading(false);
+      }
+    }
+  }, [dataMode]);
+
   const publishedWisdom = useMemo(
     () => wisdomEntries.filter((w) => w.status === 'published'),
     [wisdomEntries]
@@ -773,7 +825,28 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [publishedWisdom]);
 
   const addWisdom = useCallback(
-    (item: Omit<WisdomEntry, 'id' | 'createdAt' | 'updatedAt'>) => {
+    async (item: Omit<WisdomEntry, 'id' | 'createdAt' | 'updatedAt'>) => {
+      if (dataMode === 'authenticated') {
+        const version = contextVersionRef.current;
+        const result = await sharedWisdomService.addWisdom(item);
+        if (!result.ok) throw new Error(result.error.message);
+
+        if (mountedRef.current && version === contextVersionRef.current) {
+          setWisdomEntries((prev) => {
+            const existing = result.data.isDaily
+              ? prev.map((entry) => ({ ...entry, isDaily: false }))
+              : prev;
+            return [result.data, ...existing.filter((entry) => entry.id !== result.data.id)];
+          });
+        }
+        appendAuditLog(
+          'Added Wisdom Passage',
+          `Added Bhagavad Gita ${item.chapter}:${item.verse} (${item.status}).`
+        );
+        return result.data;
+      }
+      if (dataMode !== 'demo') throw new Error('Your shared wisdom library is still initializing.');
+
       const now = new Date().toISOString();
       const created: WisdomEntry = {
         ...item,
@@ -793,11 +866,30 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       );
       return created;
     },
-    [appendAuditLog]
+    [appendAuditLog, dataMode]
   );
 
   const updateWisdom = useCallback(
-    (id: string, patch: Partial<WisdomEntry>) => {
+    async (id: string, patch: Partial<WisdomEntry>) => {
+      if (dataMode === 'authenticated') {
+        const version = contextVersionRef.current;
+        const result = await sharedWisdomService.updateWisdom(id, patch);
+        if (!result.ok) throw new Error(result.error.message);
+
+        if (mountedRef.current && version === contextVersionRef.current) {
+          setWisdomEntries((prev) =>
+            prev.map((entry) => {
+              if (entry.id === result.data.id) return result.data;
+              if (result.data.isDaily) return { ...entry, isDaily: false };
+              return entry;
+            })
+          );
+        }
+        appendAuditLog('Updated Wisdom Passage', `Modified wisdom entry ${id}.`);
+        return;
+      }
+      if (dataMode !== 'demo') throw new Error('Your shared wisdom library is still initializing.');
+
       const now = new Date().toISOString();
       setWisdomEntries((prev) => {
         const next = prev.map((w) => {
@@ -810,11 +902,23 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
       appendAuditLog('Updated Wisdom Passage', `Modified wisdom entry ${id}.`);
     },
-    [appendAuditLog]
+    [appendAuditLog, dataMode]
   );
 
   const deleteWisdom = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      if (dataMode === 'authenticated') {
+        const version = contextVersionRef.current;
+        const result = await sharedWisdomService.deleteWisdom(id);
+        if (!result.ok) throw new Error(result.error.message);
+        if (mountedRef.current && version === contextVersionRef.current) {
+          setWisdomEntries((prev) => prev.filter((entry) => entry.id !== id));
+        }
+        appendAuditLog('Deleted Wisdom Passage', `Removed wisdom entry ${id}.`);
+        return;
+      }
+      if (dataMode !== 'demo') throw new Error('Your shared wisdom library is still initializing.');
+
       setWisdomEntries((prev) => {
         const next = prev.filter((w) => w.id !== id);
         lunaraStorage.setWisdomEntries(next);
@@ -822,11 +926,32 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
       appendAuditLog('Deleted Wisdom Passage', `Removed wisdom entry ${id}.`);
     },
-    [appendAuditLog]
+    [appendAuditLog, dataMode]
   );
 
   const setDailyWisdom = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      if (dataMode === 'authenticated') {
+        const version = contextVersionRef.current;
+        const result = await sharedWisdomService.updateWisdom(id, {
+          isDaily: true,
+          isFeatured: true,
+        });
+        if (!result.ok) throw new Error(result.error.message);
+        if (mountedRef.current && version === contextVersionRef.current) {
+          setWisdomEntries((prev) =>
+            prev.map((entry) =>
+              entry.id === result.data.id
+                ? result.data
+                : { ...entry, isDaily: false }
+            )
+          );
+        }
+        appendAuditLog('Assigned Daily Wisdom', `Assigned wisdom passage ${id} as featured daily verse.`);
+        return;
+      }
+      if (dataMode !== 'demo') throw new Error('Your shared wisdom library is still initializing.');
+
       const now = new Date().toISOString();
       setWisdomEntries((prev) => {
         const next = prev.map((w) => ({
@@ -840,7 +965,7 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
       appendAuditLog('Assigned Daily Wisdom', `Assigned wisdom passage ${id} as featured daily verse.`);
     },
-    [appendAuditLog]
+    [appendAuditLog, dataMode]
   );
 
   const toggleBookmarkWisdom = useCallback(
@@ -1239,6 +1364,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       wisdomEntries,
       publishedWisdom,
       dailyWisdom,
+      wisdomLoading,
+      wisdomError,
+      refreshWisdom,
       savedWisdomIds,
       addWisdom,
       updateWisdom,
@@ -1302,6 +1430,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       wisdomEntries,
       publishedWisdom,
       dailyWisdom,
+      wisdomLoading,
+      wisdomError,
+      refreshWisdom,
       savedWisdomIds,
       addWisdom,
       updateWisdom,

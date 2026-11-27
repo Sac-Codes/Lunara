@@ -21,8 +21,16 @@ import type { WisdomEntry, WisdomTopic } from '../types/lunara';
 
 export const WisdomPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { publishedWisdom, dailyWisdom, savedWisdomIds, toggleBookmarkWisdom, showToast } =
-    useLunara();
+  const {
+    publishedWisdom,
+    dailyWisdom,
+    savedWisdomIds,
+    toggleBookmarkWisdom,
+    wisdomLoading,
+    wisdomError,
+    refreshWisdom,
+    showToast,
+  } = useLunara();
 
   const topicParam = searchParams.get('topic') as WisdomTopic | null;
   const queryParam = searchParams.get('q') || '';
@@ -109,6 +117,25 @@ export const WisdomPage: React.FC = () => {
         artwork={LUNARA_ARTWORK.night}
         needsEdgeCrop
       />
+
+      {wisdomLoading && (
+        <div role="status" aria-live="polite" className="rounded-[16px] bg-[var(--surface-main)] border border-[var(--border-subtle)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+          Loading the shared wisdom library…
+        </div>
+      )}
+      {wisdomError && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] bg-[var(--surface-amber)] border border-[var(--border-subtle)] px-4 py-3">
+          <p className="text-sm text-[var(--text-primary)]">{wisdomError}</p>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={wisdomLoading}
+            onClick={() => void refreshWisdom()}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Featured Daily Wisdom Hero — Illuminated Warm Ivory / Peach / Gold Sanctuary */}
       {dailyWisdom && (
@@ -347,7 +374,18 @@ export const WisdomPage: React.FC = () => {
       </section>
 
       {/* Wisdom Library Grid */}
-      {filteredEntries.length === 0 ? (
+      {wisdomLoading && publishedWisdom.length === 0 ? (
+        <section role="status" className="rounded-[24px] bg-[var(--surface-main)] border border-[var(--border-subtle)] p-8 text-center text-sm text-[var(--text-secondary)]">
+          Loading shared passages…
+        </section>
+      ) : wisdomError && publishedWisdom.length === 0 ? null : publishedWisdom.length === 0 ? (
+        <section className="rounded-[24px] bg-[var(--surface-main)] border border-[var(--border-subtle)] p-8 text-center space-y-3">
+          <Compass className="w-8 h-8 text-[var(--amber-strong)] mx-auto" />
+          <p className="text-sm text-[var(--text-secondary)]">
+            No published wisdom passages are available yet.
+          </p>
+        </section>
+      ) : filteredEntries.length === 0 ? (
         <section className="rounded-[24px] bg-[var(--surface-main)] border border-[var(--border-subtle)] p-8 text-center space-y-3">
           <Compass className="w-8 h-8 text-[var(--amber-strong)] mx-auto" />
           <p className="text-sm text-[var(--text-secondary)]">

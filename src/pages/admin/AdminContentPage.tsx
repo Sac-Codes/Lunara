@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   BookMarked,
   Check,
@@ -37,6 +37,9 @@ export const AdminContentPage: React.FC = () => {
     updateWisdom,
     deleteWisdom,
     setDailyWisdom,
+    wisdomLoading,
+    wisdomError,
+    refreshWisdom,
     reflectionPrompts,
     savePrompt,
     deletePrompt,
@@ -74,6 +77,8 @@ export const AdminContentPage: React.FC = () => {
   const [wisStatus, setWisStatus] = useState<WisdomEntry['status']>('published');
   const [wisDaily, setWisDaily] = useState(false);
   const [deleteWisId, setDeleteWisId] = useState<string | null>(null);
+  const [wisdomMutationPending, setWisdomMutationPending] = useState(false);
+  const wisdomMutationLock = useRef(false);
 
   // Prompt state
   const [promptText, setPromptText] = useState('');
@@ -167,9 +172,16 @@ export const AdminContentPage: React.FC = () => {
     setWisDaily(w.isDaily);
   };
 
-  const handleSaveWisdom = (e: React.FormEvent) => {
+  const handleSaveWisdom = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!wisTitle.trim() || !wisVerse.trim() || !wisSanskrit.trim() || !wisMeaning.trim()) return;
+    if (
+      wisdomMutationPending ||
+      wisdomMutationLock.current ||
+      !wisTitle.trim() ||
+      !wisVerse.trim() ||
+      !wisSanskrit.trim() ||
+      !wisMeaning.trim()
+    ) return;
 
     const payload = {
       title: wisTitle.trim(),
@@ -183,22 +195,69 @@ export const AdminContentPage: React.FC = () => {
       reflectionPrompt: wisPrompt.trim() || 'What feels worth carrying gently into today?',
       takeaway: wisTakeaway.trim() || wisTitle.trim(),
       topic: wisTopic,
-      sourceNote:
-        wisSourceNote.trim() ||
-        `Verified Bhagavad Gita ${wisChapter}:${wisVerse.trim()}; Lunara editorial reflection.`,
+      sourceNote: wisSourceNote.trim(),
       status: wisStatus,
       isFeatured: wisDaily,
       isDaily: wisDaily,
     };
 
-    if (editWisId) {
-      updateWisdom(editWisId, payload);
-      showToast('Wisdom passage updated.', 'amber');
-    } else {
-      addWisdom(payload);
-      showToast('Wisdom passage added.', 'amber');
+    wisdomMutationLock.current = true;
+    setWisdomMutationPending(true);
+    try {
+      if (editWisId) {
+        await updateWisdom(editWisId, payload);
+        showToast('Wisdom passage updated.', 'amber');
+      } else {
+        await addWisdom(payload);
+        showToast('Wisdom passage added.', 'amber');
+      }
+      resetWisForm();
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Could not save the wisdom passage.',
+        'amber'
+      );
+    } finally {
+      wisdomMutationLock.current = false;
+      setWisdomMutationPending(false);
     }
-    resetWisForm();
+  };
+
+  const handleSetDailyWisdom = async (entry: WisdomEntry) => {
+    if (wisdomMutationLock.current) return;
+    wisdomMutationLock.current = true;
+    setWisdomMutationPending(true);
+    try {
+      await setDailyWisdom(entry.id);
+      showToast(`Set Gita ${entry.chapter}:${entry.verse} as today's featured wisdom.`, 'amber');
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Could not update the featured wisdom passage.',
+        'amber'
+      );
+    } finally {
+      wisdomMutationLock.current = false;
+      setWisdomMutationPending(false);
+    }
+  };
+
+  const handleDeleteWisdom = async () => {
+    if (!deleteWisId || wisdomMutationLock.current) return;
+    wisdomMutationLock.current = true;
+    setWisdomMutationPending(true);
+    try {
+      await deleteWisdom(deleteWisId);
+      showToast('Wisdom passage deleted.', 'amber');
+      setDeleteWisId(null);
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Could not delete the wisdom passage.',
+        'amber'
+      );
+    } finally {
+      wisdomMutationLock.current = false;
+      setWisdomMutationPending(false);
+    }
   };
 
   const handleSavePrompt = (e: React.FormEvent) => {
@@ -470,7 +529,36 @@ export const AdminContentPage: React.FC = () => {
               </div>
             </div>
 
+            {wisdomLoading && (
+              <p role="status" aria-live="polite" className="px-4 py-3 text-sm text-[var(--text-secondary)]">
+                Loading shared wisdom…
+              </p>
+            )}
+            {wisdomError && (
+              <div role="alert" className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-[var(--surface-amber)]/45">
+                <p className="text-sm text-[var(--text-primary)]">{wisdomError}</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={wisdomLoading}
+                  onClick={() => void refreshWisdom()}
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
+            {!wisdomLoading && !wisdomError && wisdomEntries.length === 0 && (
+              <p className="p-6 text-center text-sm text-[var(--text-secondary)]">
+                The shared wisdom library is empty.
+              </p>
+            )}
+
             <div className="divide-y divide-[var(--border-subtle)]">
+              {wisdomEntries.length > 0 && filteredWisdom.length === 0 && (
+                <p className="p-6 text-center text-sm text-[var(--text-secondary)]">
+                  No wisdom passages match your search.
+                </p>
+              )}
               {filteredWisdom.map((w) => (
                 <div key={w.id} className="p-4 sm:p-5 space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -497,19 +585,17 @@ export const AdminContentPage: React.FC = () => {
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => {
-                          setDailyWisdom(w.id);
-                          showToast(`Set Gita ${w.chapter}:${w.verse} as today's featured wisdom.`, 'amber');
-                        }}
+                        disabled={wisdomMutationPending || w.status !== 'published'}
+                        onClick={() => void handleSetDailyWisdom(w)}
                         className="inline-flex items-center gap-1 min-h-[30px] px-2.5 rounded-[8px] bg-[var(--surface-amber)]/75 text-xs font-medium text-[var(--amber-strong)] cursor-pointer hover:opacity-85"
                       >
                         <Star className="w-3 h-3" />
                         <span>{w.isDaily ? 'Daily' : 'Set Daily'}</span>
                       </button>
-                      <IconButton label="Edit wisdom" size="sm" onClick={() => startEditWisdom(w)}>
+                      <IconButton label="Edit wisdom" size="sm" disabled={wisdomMutationPending} onClick={() => startEditWisdom(w)}>
                         <Edit3 className="w-3.5 h-3.5" />
                       </IconButton>
-                      <IconButton label="Delete wisdom" size="sm" onClick={() => setDeleteWisId(w.id)}>
+                      <IconButton label="Delete wisdom" size="sm" disabled={wisdomMutationPending} onClick={() => setDeleteWisId(w.id)}>
                         <Trash2 className="w-3.5 h-3.5 text-[var(--coral-strong)]" />
                       </IconButton>
                     </div>
@@ -627,7 +713,11 @@ export const AdminContentPage: React.FC = () => {
             <div className="flex items-center justify-between gap-3 text-xs">
               <select
                 value={wisStatus}
-                onChange={(e) => setWisStatus(e.target.value as WisdomEntry['status'])}
+                onChange={(e) => {
+                  const status = e.target.value as WisdomEntry['status'];
+                  setWisStatus(status);
+                  if (status === 'draft') setWisDaily(false);
+                }}
                 className="min-h-[36px] rounded-[9px] bg-[var(--surface-main)] border border-[var(--border-subtle)] px-2.5 text-xs text-[var(--text-primary)]"
               >
                 <option value="published">Published</option>
@@ -638,6 +728,7 @@ export const AdminContentPage: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={wisDaily}
+                  disabled={wisStatus !== 'published'}
                   onChange={(e) => setWisDaily(e.target.checked)}
                 />
                 <span>Set as Daily featured</span>
@@ -645,7 +736,14 @@ export const AdminContentPage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2 pt-1">
-              <Button type="submit" variant="primary" size="sm" leftIcon={<Check className="w-4 h-4" />}>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                loading={wisdomMutationPending}
+                disabled={wisdomLoading}
+                leftIcon={<Check className="w-4 h-4" />}
+              >
                 {editWisId ? 'Save passage' : 'Add passage'}
               </Button>
               {editWisId && (
@@ -813,15 +911,9 @@ export const AdminContentPage: React.FC = () => {
         open={deleteWisId !== null}
         title="Delete this wisdom passage?"
         description="This removes the passage from the Bhagavad Gita library."
-        confirmLabel="Delete"
         destructive
-        onConfirm={() => {
-          if (deleteWisId) {
-            deleteWisdom(deleteWisId);
-            showToast('Wisdom passage deleted.', 'amber');
-          }
-          setDeleteWisId(null);
-        }}
+        confirmLabel={wisdomMutationPending ? 'Deleting…' : 'Delete'}
+        onConfirm={() => void handleDeleteWisdom()}
         onCancel={() => setDeleteWisId(null)}
       />
     </div>

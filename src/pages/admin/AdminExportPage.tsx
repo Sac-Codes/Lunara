@@ -1,11 +1,16 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Check, Download, FileCode, FileSpreadsheet, FileText, ShieldAlert } from 'lucide-react';
 import { PageHeader } from '../../components/shared/PageHeader';
 import { Button } from '../../components/ui/Button';
 import { useLunara } from '../../providers/LunaraProvider';
+import { adminService, type AdminUserRecords } from '../../services/adminService';
 
 type ExportFormat = 'json' | 'csv' | 'html';
+type ExportRecordsState =
+  | { userId: string; status: 'loading' }
+  | { userId: string; status: 'error'; message: string }
+  | { userId: string; status: 'loaded'; data: AdminUserRecords };
 
 function escapeCsvCell(value: unknown): string {
   const raw = String(value ?? '');
@@ -43,11 +48,57 @@ export const AdminExportPage: React.FC = () => {
   });
 
   const [journalConfirmed, setJournalConfirmed] = useState(false);
+  const [recordsRequest, setRecordsRequest] = useState(0);
+  const [recordsState, setRecordsState] = useState<ExportRecordsState>({
+    userId: '',
+    status: 'loading',
+  });
 
   const selectedUser = useMemo(
-    () => adminUsers.find((u) => u.id === selectedUserId) || adminUsers[0],
+    () => adminUsers.find((u) => u.id === selectedUserId),
     [adminUsers, selectedUserId]
   );
+  const targetUserId = selectedUser?.id;
+
+  useEffect(() => {
+    if (!targetUserId) return;
+
+    let active = true;
+    setRecordsState({ userId: targetUserId, status: 'loading' });
+
+    void adminService.getUserRecords(targetUserId).then((result) => {
+      if (!active) return;
+      if (result.ok) {
+        setRecordsState({ userId: targetUserId, status: 'loaded', data: result.data });
+      } else {
+        setRecordsState({
+          userId: targetUserId,
+          status: 'error',
+          message: result.error.message,
+        });
+      }
+    }).catch(() => {
+      if (!active) return;
+      setRecordsState({
+        userId: targetUserId,
+        status: 'error',
+        message: 'Records could not be loaded. Please try again.',
+      });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [targetUserId, recordsRequest]);
+
+  const currentRecordsState =
+    !targetUserId
+      ? { status: 'idle' as const }
+      : recordsState.userId === targetUserId
+        ? recordsState
+        : { userId: targetUserId, status: 'loading' as const };
+  const recordsLoaded = currentRecordsState.status === 'loaded';
+  const userRecords = recordsLoaded ? currentRecordsState.data : { checkIns: [], journals: [] };
 
   const filteredData = useMemo(() => {
     if (!selectedUser) return { checkIns: [], journals: [] };
@@ -57,10 +108,10 @@ export const AdminExportPage: React.FC = () => {
       return true;
     };
     return {
-      checkIns: (selectedUser.checkIns || []).filter((c) => inRange(c.date)),
-      journals: (selectedUser.journals || []).filter((j) => inRange(j.date)),
+      checkIns: userRecords.checkIns.filter((c) => inRange(c.date)),
+      journals: userRecords.journals.filter((j) => inRange(j.date)),
     };
-  }, [selectedUser, startDate, endDate]);
+  }, [selectedUser, startDate, endDate, userRecords]);
 
   const anyCategorySelected = Object.values(cats).some(Boolean);
   const blockedByJournalConfirm = cats.journals && !journalConfirmed;
@@ -74,7 +125,7 @@ export const AdminExportPage: React.FC = () => {
   };
 
   const handleDownload = () => {
-    if (!selectedUser || !anyCategorySelected || blockedByJournalConfirm) return;
+    if (!selectedUser || !recordsLoaded || !anyCategorySelected || blockedByJournalConfirm) return;
 
     const stamp = new Date().toISOString().slice(0, 10);
     const filenameBase = `lunara_user_export_${stamp}`;
@@ -91,16 +142,14 @@ export const AdminExportPage: React.FC = () => {
 
     const payload: Record<string, unknown> = {
       exportedAt: new Date().toISOString(),
-      prototypeNotice: 'Simulated prototype user export generated from Lunara Admin.',
+      source: 'Lunara Supabase',
       dateRange: { startDate: startDate || 'all', endDate: endDate || 'all' },
       ...(cats.profile
         ? {
             profile: {
               id: selectedUser.id,
               name: selectedUser.name,
-              email: selectedUser.email,
               role: selectedUser.role,
-              status: selectedUser.status,
               joinedDate: selectedUser.joinedDate,
               preferredWindow: selectedUser.preferredWindow || 'anytime',
             },
@@ -149,7 +198,7 @@ export const AdminExportPage: React.FC = () => {
             '',
             '',
             '',
-            `${selectedUser.email} (${selectedUser.role}, ${selectedUser.status})`,
+            selectedUser.role,
           ]
             .map(escapeCsvCell)
             .join(',')
@@ -196,7 +245,7 @@ export const AdminExportPage: React.FC = () => {
 </head>
 <body>
 <h1>Lunara Reflection Export</h1>
-<p class="meta">Account: ${escapeHtml(selectedUser.name)} (${escapeHtml(selectedUser.email)}) · Exported ${stamp}</p>
+<p class="meta">Account: ${escapeHtml(selectedUser.name)} (${escapeHtml(selectedUser.role)}) · Exported ${stamp}</p>
 ${
   cats.checkIns || cats.metrics || cats.likesDislikes
     ? `<section><h2>Check-ins (${filteredData.checkIns.length})</h2>${filteredData.checkIns
@@ -235,7 +284,7 @@ ${
     // Log audit event WITHOUT any journal prose
     appendAuditLog(
       'Exported User Data',
-      `Exported ${format.toUpperCase()} (${includedCategories.join(', ')}) for prototype user.`,
+      `Exported ${format.toUpperCase()} (${includedCategories.join(', ')}) for selected account.`,
       selectedUser.name
     );
     showToast(`Downloaded ${filenameBase}.${ext}.`, 'teal');
@@ -246,7 +295,7 @@ ${
       <PageHeader
         eyebrow="Administration · Export"
         title="Safeguarded data export"
-        description="Select a prototype user, choose specific data categories and dates, and export responsibly with audit logging."
+        description="Select a user, choose specific data categories and dates, and export their records responsibly."
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -258,7 +307,7 @@ ${
                 htmlFor="export-user"
                 className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5"
               >
-                Select prototype user
+                Select user
               </label>
               <select
                 id="export-user"
@@ -266,14 +315,34 @@ ${
                 onChange={(e) => setSelectedUserId(e.target.value)}
                 className="w-full min-h-[42px] rounded-[11px] bg-[var(--surface-secondary)] border border-[var(--border-subtle)] px-3 text-sm text-[var(--text-primary)]"
               >
+                <option value="" disabled>
+                  Select a user…
+                </option>
                 {adminUsers.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.name} ({u.email}) — {u.checkIns?.length || 0} check-ins,{' '}
-                    {u.journals?.length || 0} journals
+                    {u.name} ({u.role})
                   </option>
                 ))}
               </select>
             </div>
+
+            {currentRecordsState.status === 'loading' && (
+              <p role="status" aria-live="polite" className="sm:col-span-3 text-sm text-[var(--text-secondary)]">
+                Loading selected user’s records…
+              </p>
+            )}
+            {currentRecordsState.status === 'error' && (
+              <div role="alert" className="sm:col-span-3 flex flex-wrap items-center justify-between gap-3 rounded-[12px] bg-[var(--surface-amber)] p-3">
+                <p className="text-sm text-[var(--text-primary)]">{currentRecordsState.message}</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setRecordsRequest((request) => request + 1)}
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
 
             <div>
               <label
@@ -377,7 +446,7 @@ ${
                   className="mt-0.5 accent-[#9A692C]"
                 />
                 <span>
-                  I confirm this export is authorized and will be handled confidentially (this action is recorded in Audit Logs without journal text).
+                  I confirm this export is authorized and will be handled confidentially.
                 </span>
               </label>
             </div>
@@ -420,7 +489,7 @@ ${
             <Button
               variant="teal"
               size="md"
-              disabled={!selectedUser || !anyCategorySelected || blockedByJournalConfirm}
+              disabled={!selectedUser || !recordsLoaded || !anyCategorySelected || blockedByJournalConfirm}
               onClick={handleDownload}
               leftIcon={<Download className="w-4 h-4" />}
             >
@@ -446,13 +515,17 @@ ${
                 <div className="rounded-[14px] bg-[var(--surface-main)] p-4">
                   <div className="text-xs text-[var(--text-muted)]">Check-ins in range</div>
                   <div className="mt-1 font-display text-2xl font-medium tabular-nums text-[var(--text-primary)]">
-                    {filteredData.checkIns.length}
+                    {recordsLoaded ? filteredData.checkIns.length : '—'}
                   </div>
                 </div>
                 <div className="rounded-[14px] bg-[var(--surface-main)] p-4">
                   <div className="text-xs text-[var(--text-muted)]">Journals in range</div>
                   <div className="mt-1 font-display text-2xl font-medium tabular-nums text-[var(--text-primary)]">
-                    {cats.journals ? filteredData.journals.length : 'Excluded'}
+                    {cats.journals
+                      ? recordsLoaded
+                        ? filteredData.journals.length
+                        : '—'
+                      : 'Excluded'}
                   </div>
                 </div>
               </div>
@@ -460,10 +533,10 @@ ${
               <div className="text-xs text-[var(--text-secondary)] space-y-1.5 pt-2">
                 <div className="flex items-center gap-1.5 text-[var(--teal-strong)] font-medium">
                   <Check className="w-3.5 h-3.5" />
-                  <span>Audit protection active</span>
+                  <span>Export privacy safeguard</span>
                 </div>
                 <p>
-                  Every export logs actor, timestamp, target account, and selected category names in Audit Logs—never private journal content.
+                  Authenticated export activity is not persisted to an audit log yet. Journal text is not included in export activity metadata.
                 </p>
               </div>
             </div>

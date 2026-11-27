@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   Area,
@@ -25,6 +25,7 @@ import {
 import { PageHeader } from '../../components/shared/PageHeader';
 import { Button, IconButton } from '../../components/ui/Button';
 import { MOOD_MAP } from '../../data/sampleJourney';
+import { adminService, type AdminUserRecords } from '../../services/adminService';
 import {
   countWords,
   formatAxisDate,
@@ -38,6 +39,10 @@ import { useLunara } from '../../providers/LunaraProvider';
 import type { AdminUserPrototype } from '../../types/lunara';
 
 type DetailTab = 'profile' | 'checkins' | 'journals' | 'activity' | 'calendar';
+type UserRecordsState =
+  | { userId: string; status: 'loading' }
+  | { userId: string; status: 'error'; message: string }
+  | { userId: string; status: 'loaded'; data: AdminUserRecords };
 
 export const AdminUserDetailPage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -53,8 +58,51 @@ export const AdminUserDetailPage: React.FC = () => {
   const [viewYear, setViewYear] = useState(() => parseDateKey(todayKey).getFullYear());
   const [viewMonth, setViewMonth] = useState(() => parseDateKey(todayKey).getMonth());
 
-  const checkIns = useMemo(() => targetUser?.checkIns || [], [targetUser]);
-  const journals = useMemo(() => targetUser?.journals || [], [targetUser]);
+  const [userRecords, setUserRecords] = useState<UserRecordsState>({
+    userId: '',
+    status: 'loading',
+  });
+  const [recordsRequest, setRecordsRequest] = useState(0);
+  const targetUserId = targetUser?.id;
+
+  useEffect(() => {
+    if (!targetUserId) return;
+
+    let active = true;
+    setUserRecords({ userId: targetUserId, status: 'loading' });
+
+    void adminService.getUserRecords(targetUserId).then((result) => {
+      if (!active) return;
+      if (result.ok) {
+        setUserRecords({ userId: targetUserId, status: 'loaded', data: result.data });
+      } else {
+        setUserRecords({
+          userId: targetUserId,
+          status: 'error',
+          message: result.error.message,
+        });
+      }
+    }).catch(() => {
+      if (!active) return;
+      setUserRecords({
+        userId: targetUserId,
+        status: 'error',
+        message: 'Records could not be loaded. Please try again.',
+      });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [targetUserId, recordsRequest]);
+
+  const currentRecordsState =
+    userRecords.userId === targetUserId
+      ? userRecords
+      : { userId: targetUserId || '', status: 'loading' as const };
+  const recordsLoaded = currentRecordsState.status === 'loaded';
+  const checkIns = recordsLoaded ? currentRecordsState.data.checkIns : [];
+  const journals = recordsLoaded ? currentRecordsState.data.journals : [];
 
   const filteredCheckIns = useMemo(() => {
     const q = entrySearch.trim().toLowerCase();
@@ -108,7 +156,7 @@ export const AdminUserDetailPage: React.FC = () => {
           User not found
         </h1>
         <p className="text-sm text-[var(--text-secondary)]">
-          This account could not be found in the prototype directory.
+          This account could not be found in the Admin directory.
         </p>
         <Link to="/admin/users">
           <Button variant="secondary" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
@@ -129,8 +177,8 @@ export const AdminUserDetailPage: React.FC = () => {
 
   const tabs: Array<{ id: DetailTab; label: string; icon: typeof User }> = [
     { id: 'profile', label: 'Profile', icon: User },
-    { id: 'checkins', label: `Check-ins (${checkIns.length})`, icon: PenLine },
-    { id: 'journals', label: `Journals (${journals.length})`, icon: BookOpen },
+    { id: 'checkins', label: `Check-ins (${recordsLoaded ? checkIns.length : '—'})`, icon: PenLine },
+    { id: 'journals', label: `Journals (${recordsLoaded ? journals.length : '—'})`, icon: BookOpen },
     { id: 'activity', label: 'Activity Overview', icon: BarChart3 },
     { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   ];
@@ -146,7 +194,7 @@ export const AdminUserDetailPage: React.FC = () => {
       <PageHeader
         eyebrow="Administration · User Detail"
         title={targetUser.name}
-        description={`${targetUser.email} · ${targetUser.role} · Prototype record`}
+        description={`${targetUser.email} · ${targetUser.role}`}
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Link to="/admin/users">
@@ -190,6 +238,31 @@ export const AdminUserDetailPage: React.FC = () => {
           );
         })}
       </div>
+
+      {currentRecordsState.status === 'loading' && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-[16px] bg-[var(--surface-blue)]/65 border border-[var(--border-subtle)] px-4 py-3 text-sm text-[var(--text-secondary)]"
+        >
+          Loading this user’s check-ins and journal entries…
+        </div>
+      )}
+      {currentRecordsState.status === 'error' && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] bg-[var(--surface-amber)] border border-[var(--border-subtle)] px-4 py-3"
+        >
+          <p className="text-sm text-[var(--text-primary)]">{currentRecordsState.message}</p>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setRecordsRequest((request) => request + 1)}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Tab Content */}
       {activeTab === 'profile' && (
@@ -290,13 +363,13 @@ export const AdminUserDetailPage: React.FC = () => {
               <div className="rounded-[14px] bg-[var(--surface-main)] p-4">
                 <div className="text-xs text-[var(--text-muted)]">Check-ins</div>
                 <div className="mt-1 font-display text-2xl font-medium tabular-nums text-[var(--text-primary)]">
-                  {checkIns.length}
+                  {recordsLoaded ? checkIns.length : '—'}
                 </div>
               </div>
               <div className="rounded-[14px] bg-[var(--surface-main)] p-4">
                 <div className="text-xs text-[var(--text-muted)]">Journal entries</div>
                 <div className="mt-1 font-display text-2xl font-medium tabular-nums text-[var(--text-primary)]">
-                  {journals.length}
+                  {recordsLoaded ? journals.length : '—'}
                 </div>
               </div>
             </div>
@@ -321,10 +394,17 @@ export const AdminUserDetailPage: React.FC = () => {
             />
           </div>
 
-          {activeTab === 'checkins' ? (
+          {recordsLoaded && activeTab === 'checkins' ? (
             filteredCheckIns.length === 0 ? (
               <div className="rounded-[20px] bg-[var(--surface-main)] border border-[var(--border-subtle)] p-8 text-center text-sm text-[var(--text-secondary)]">
-                No prototype check-in entries recorded for this account.
+                {checkIns.length === 0
+                  ? 'No check-in records found for this account.'
+                  : 'No check-ins match this filter.'}
+                {checkIns.length === 0 && (
+                  <p className="mt-2 text-xs text-[var(--text-muted)]">
+                    If you expected records, confirm the Admin read policies are applied in Supabase.
+                  </p>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
@@ -384,11 +464,18 @@ export const AdminUserDetailPage: React.FC = () => {
                 })}
               </div>
             )
-          ) : filteredJournals.length === 0 ? (
+          ) : recordsLoaded && filteredJournals.length === 0 ? (
             <div className="rounded-[20px] bg-[var(--surface-main)] border border-[var(--border-subtle)] p-8 text-center text-sm text-[var(--text-secondary)]">
-              No prototype journal entries recorded for this account.
+              {journals.length === 0
+                ? 'No journal entries found for this account.'
+                : 'No journal entries match this filter.'}
+              {journals.length === 0 && (
+                <p className="mt-2 text-xs text-[var(--text-muted)]">
+                  If you expected records, confirm the Admin read policies are applied in Supabase.
+                </p>
+              )}
             </div>
-          ) : (
+          ) : recordsLoaded ? (
             <div className="space-y-4">
               {filteredJournals.map((j) => (
                 <article
@@ -413,7 +500,7 @@ export const AdminUserDetailPage: React.FC = () => {
                 </article>
               ))}
             </div>
-          )}
+          ) : null}
         </div>
       )}
 

@@ -44,9 +44,12 @@ type UserRecordsState =
   | { userId: string; status: 'error'; message: string }
   | { userId: string; status: 'loaded'; data: AdminUserRecords };
 
+const formatCheckInTimestamp = (value: string) =>
+  new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+
 export const AdminUserDetailPage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
-  const { adminUsers, updateAdminUser, showToast } = useLunara();
+  const { adminUsers, parameters, updateAdminUser, showToast } = useLunara();
 
   const targetUser = adminUsers.find((u) => u.id === userId);
   const [activeTab, setActiveTab] = useState<DetailTab>('profile');
@@ -103,6 +106,10 @@ export const AdminUserDetailPage: React.FC = () => {
   const recordsLoaded = currentRecordsState.status === 'loaded';
   const checkIns = recordsLoaded ? currentRecordsState.data.checkIns : [];
   const journals = recordsLoaded ? currentRecordsState.data.journals : [];
+  const customParameterNames = useMemo(
+    () => new Map(parameters.map((parameter) => [parameter.id, parameter.name])),
+    [parameters]
+  );
 
   const filteredCheckIns = useMemo(() => {
     const q = entrySearch.trim().toLowerCase();
@@ -410,15 +417,33 @@ export const AdminUserDetailPage: React.FC = () => {
               <div className="space-y-3">
                 {filteredCheckIns.map((c) => {
                   const moodDef = c.mood ? MOOD_MAP[c.mood] : null;
+                  const customValues = Object.entries(c.customValues ?? {}).filter(
+                    ([, value]) => typeof value === 'number' || value.trim().length > 0
+                  );
+                  const customActivityLabels = (c.customActivities ?? []).map((activity) => {
+                    const separator = activity.indexOf(':');
+                    return separator === -1 ? activity : activity.slice(separator + 1);
+                  });
+
                   return (
                     <article
                       key={c.id}
                       className="rounded-[20px] bg-[var(--surface-main)] border border-[var(--border-subtle)] p-5 space-y-3"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-display text-lg font-medium text-[var(--text-primary)]">
-                          {formatLongDate(c.date)}
-                        </span>
+                        <div>
+                          <span className="font-display text-lg font-medium text-[var(--text-primary)]">
+                            {formatLongDate(c.date)}
+                          </span>
+                          <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-[var(--text-muted)]">
+                            <time dateTime={c.createdAt}>
+                              Recorded {formatCheckInTimestamp(c.createdAt)}
+                            </time>
+                            <time dateTime={c.updatedAt}>
+                              Updated {formatCheckInTimestamp(c.updatedAt)}
+                            </time>
+                          </div>
+                        </div>
                         {moodDef && (
                           <span className="text-xs font-medium text-[var(--blue-strong)]">
                             {moodDef.emoji} {moodDef.label}
@@ -454,7 +479,112 @@ export const AdminUserDetailPage: React.FC = () => {
                         </div>
                       )}
 
-                      {c.notes && (
+                      {(c.activities?.length ||
+                        customActivityLabels.length ||
+                        c.proudOf?.trim() ||
+                        c.needs?.length ||
+                        c.tomorrowIntention?.trim() ||
+                        customValues.length) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {c.activities && c.activities.length > 0 && (
+                            <div className="rounded-[12px] bg-[var(--surface-secondary)] p-3.5">
+                              <div className="text-xs font-medium text-[var(--text-secondary)]">
+                                What shaped the day
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {c.activities.map((activity) => (
+                                  <span
+                                    key={activity}
+                                    className="rounded-full bg-[var(--surface-main)] px-2.5 py-1 text-xs text-[var(--text-primary)]"
+                                  >
+                                    {activity}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {customActivityLabels.length > 0 && (
+                            <div className="rounded-[12px] bg-[var(--surface-secondary)] p-3.5">
+                              <div className="text-xs font-medium text-[var(--text-secondary)]">
+                                Custom activity tags
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {customActivityLabels.map((activity, index) => (
+                                  <span
+                                    key={`${c.customActivities?.[index]}-${index}`}
+                                    className="rounded-full bg-[var(--surface-main)] px-2.5 py-1 text-xs text-[var(--text-primary)]"
+                                  >
+                                    {activity}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {c.proudOf?.trim() && (
+                            <div className="rounded-[12px] bg-[var(--surface-teal)] p-3.5">
+                              <div className="text-xs font-medium text-[var(--teal-strong)]">
+                                Something they were proud of
+                              </div>
+                              <p className="mt-1 text-sm text-[var(--text-primary)] whitespace-pre-line">
+                                {c.proudOf}
+                              </p>
+                            </div>
+                          )}
+
+                          {c.needs && c.needs.length > 0 && (
+                            <div className="rounded-[12px] bg-[var(--surface-blue)] p-3.5">
+                              <div className="text-xs font-medium text-[var(--blue-strong)]">
+                                What they needed
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {c.needs.map((need) => (
+                                  <span
+                                    key={need}
+                                    className="rounded-full bg-[var(--surface-main)] px-2.5 py-1 text-xs text-[var(--text-primary)]"
+                                  >
+                                    {need}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {c.tomorrowIntention?.trim() && (
+                            <div className="rounded-[12px] bg-[var(--surface-lavender)] p-3.5">
+                              <div className="text-xs font-medium text-[var(--lavender-strong)]">
+                                Tomorrow’s intention
+                              </div>
+                              <p className="mt-1 text-sm text-[var(--text-primary)] whitespace-pre-line">
+                                {c.tomorrowIntention}
+                              </p>
+                            </div>
+                          )}
+
+                          {customValues.length > 0 && (
+                            <div className="rounded-[12px] bg-[var(--surface-lavender)] p-3.5">
+                              <div className="text-xs font-medium text-[var(--lavender-strong)]">
+                                Custom check-in parameters
+                              </div>
+                              <dl className="mt-2 space-y-2">
+                                {customValues.map(([id, value]) => (
+                                  <div key={id} className="flex items-start justify-between gap-3 text-sm">
+                                    <dt className="text-[var(--text-secondary)]">
+                                      {customParameterNames.get(id) || id}
+                                    </dt>
+                                    <dd className="text-right font-medium text-[var(--text-primary)]">
+                                      {value}
+                                    </dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {c.notes.trim() && (
                         <p className="text-sm text-[var(--text-primary)] bg-[var(--surface-secondary)] rounded-[12px] p-3.5">
                           {c.notes}
                         </p>

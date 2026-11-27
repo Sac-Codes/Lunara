@@ -9,16 +9,23 @@ import {
 } from './serviceHelpers';
 
 export interface AdminUserRecords {
-  checkIns: CheckInEntry[];
+  checkIns: AdminCheckInEntry[];
   journals: JournalEntry[];
+}
+
+export interface AdminCheckInEntry extends CheckInEntry {
+  createdAt: string;
 }
 
 const USER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function mapCheckInRow(row: Database['public']['Tables']['check_ins']['Row']): CheckInEntry {
+function mapCheckInRow(
+  row: Database['public']['Tables']['check_ins']['Row']
+): AdminCheckInEntry {
   return {
     id: row.id,
     date: row.check_in_date,
+    createdAt: row.created_at,
     mood: row.mood,
     happiness: row.happiness,
     energy: row.energy,

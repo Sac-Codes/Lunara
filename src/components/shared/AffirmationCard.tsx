@@ -16,6 +16,9 @@ export const AffirmationCard: React.FC<AffirmationCardProps> = ({
 }) => {
   const {
     publishedAffirmations,
+    affirmationLoading,
+    affirmationError,
+    refreshAffirmations,
     favoriteAffirmationIds,
     toggleFavoriteAffirmation,
     showToast,
@@ -31,7 +34,32 @@ export const AffirmationCard: React.FC<AffirmationCardProps> = ({
     return dayOfYear % publishedAffirmations.length;
   }, [publishedAffirmations.length]);
 
-  if (publishedAffirmations.length === 0) return null;
+  if (publishedAffirmations.length === 0) {
+    return (
+      <section
+        role={affirmationError ? 'alert' : 'status'}
+        aria-live="polite"
+        className="rounded-[26px] bg-[var(--surface-main)] border border-[var(--border-subtle)] p-6 text-center text-sm text-[var(--text-secondary)]"
+      >
+        {affirmationLoading
+          ? 'Loading today’s affirmation…'
+          : affirmationError
+            ? (
+                <div className="space-y-2">
+                  <p>{affirmationError}</p>
+                  <button
+                    type="button"
+                    onClick={() => void refreshAffirmations()}
+                    className="font-medium text-[var(--blue-strong)] hover:underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )
+            : 'No shared affirmation is available today.'}
+      </section>
+    );
+  }
 
   const current = publishedAffirmations[(dailyIndex + offset) % publishedAffirmations.length];
   const isFavorite = favoriteAffirmationIds.includes(current.id);

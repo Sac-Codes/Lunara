@@ -49,9 +49,9 @@ const formatCheckInTimestamp = (value: string) =>
 
 export const AdminUserDetailPage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
-  const { adminUsers, parameters, updateAdminUser, showToast } = useLunara();
+  const { dataMode, adminUsers, parameters, updateAdminUser, showToast } = useLunara();
 
-  const targetUser = adminUsers.find((u) => u.id === userId);
+  const previewTargetUser = adminUsers.find((u) => u.id === userId);
   const [activeTab, setActiveTab] = useState<DetailTab>('profile');
   const [entrySearch, setEntrySearch] = useState('');
 
@@ -66,12 +66,32 @@ export const AdminUserDetailPage: React.FC = () => {
     status: 'loading',
   });
   const [recordsRequest, setRecordsRequest] = useState(0);
-  const targetUserId = targetUser?.id;
+  const targetUserId = dataMode === 'authenticated' ? userId : previewTargetUser?.id;
 
   useEffect(() => {
     if (!targetUserId) return;
 
     let active = true;
+    if (dataMode !== 'authenticated' && previewTargetUser) {
+      setUserRecords({
+        userId: targetUserId,
+        status: 'loaded',
+        data: {
+          checkIns: (previewTargetUser.checkIns ?? []).map((entry) => ({
+            ...entry,
+            createdAt: entry.updatedAt,
+          })),
+          journals: previewTargetUser.journals ?? [],
+          profile: null,
+          role: null,
+          preferences: null,
+        },
+      });
+      return () => {
+        active = false;
+      };
+    }
+
     setUserRecords({ userId: targetUserId, status: 'loading' });
 
     void adminService.getUserRecords(targetUserId).then((result) => {
@@ -97,7 +117,7 @@ export const AdminUserDetailPage: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [targetUserId, recordsRequest]);
+  }, [dataMode, targetUserId, previewTargetUser, recordsRequest]);
 
   const currentRecordsState =
     userRecords.userId === targetUserId
@@ -106,6 +126,19 @@ export const AdminUserDetailPage: React.FC = () => {
   const recordsLoaded = currentRecordsState.status === 'loaded';
   const checkIns = recordsLoaded ? currentRecordsState.data.checkIns : [];
   const journals = recordsLoaded ? currentRecordsState.data.journals : [];
+  const targetUser: AdminUserPrototype | undefined =
+    dataMode === 'authenticated' && recordsLoaded && currentRecordsState.data.profile
+      ? {
+          id: currentRecordsState.data.profile.id,
+          name: currentRecordsState.data.profile.display_name || 'Lunara member',
+          email: null,
+          role: currentRecordsState.data.role === 'admin' ? 'Admin' : 'Member',
+          status: 'unavailable',
+          joinedDate: currentRecordsState.data.profile.created_at.slice(0, 10),
+          lastActive: null,
+          preferredWindow: currentRecordsState.data.profile.preferred_check_in_time,
+        }
+      : previewTargetUser;
   const customParameterNames = useMemo(
     () => new Map(parameters.map((parameter) => [parameter.id, parameter.name])),
     [parameters]
@@ -156,6 +189,32 @@ export const AdminUserDetailPage: React.FC = () => {
     [viewYear, viewMonth]
   );
 
+  if (!targetUser && dataMode === 'authenticated' && currentRecordsState.status === 'loading') {
+    return (
+      <div role="status" aria-live="polite" className="rounded-[20px] bg-[var(--surface-main)] border border-[var(--border-subtle)] p-8 text-center text-sm text-[var(--text-secondary)]">
+        Loading selected account…
+      </div>
+    );
+  }
+
+  if (!targetUser && dataMode === 'authenticated' && currentRecordsState.status === 'error') {
+    return (
+      <div className="rounded-[20px] bg-[var(--surface-main)] border border-[var(--border-subtle)] p-8 text-center space-y-4">
+        <p role="alert" className="text-sm text-[var(--text-primary)]">{currentRecordsState.message}</p>
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setRecordsRequest((request) => request + 1)}>
+            Retry
+          </Button>
+          <Link to="/admin/users">
+            <Button variant="ghost" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              Back to directory
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (!targetUser) {
     return (
       <div className="rounded-[24px] bg-[var(--surface-main)] border border-[var(--border-subtle)] p-8 text-center space-y-4">
@@ -201,7 +260,7 @@ export const AdminUserDetailPage: React.FC = () => {
       <PageHeader
         eyebrow="Administration · User Detail"
         title={targetUser.name}
-        description={`${targetUser.email} · ${targetUser.role}`}
+        description={`${targetUser.email || 'Email unavailable'} · ${targetUser.role}`}
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Link to="/admin/users">
@@ -209,11 +268,13 @@ export const AdminUserDetailPage: React.FC = () => {
                 Directory
               </Button>
             </Link>
-            <Link to={`/admin/notifications?userId=${targetUser.id}`}>
-              <Button variant="outline" size="sm" leftIcon={<Bell className="w-4 h-4" />}>
-                Ping user
-              </Button>
-            </Link>
+            {dataMode !== 'authenticated' && (
+              <Link to={`/admin/notifications?userId=${targetUser.id}`}>
+                <Button variant="outline" size="sm" leftIcon={<Bell className="w-4 h-4" />}>
+                  Ping user
+                </Button>
+              </Link>
+            )}
             <Link to={`/admin/export?userId=${targetUser.id}`}>
               <Button variant="secondary" size="sm" leftIcon={<Download className="w-4 h-4" />}>
                 Export data
@@ -270,7 +331,6 @@ export const AdminUserDetailPage: React.FC = () => {
           </Button>
         </div>
       )}
-
       {/* Tab Content */}
       {activeTab === 'profile' && (
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -289,7 +349,7 @@ export const AdminUserDetailPage: React.FC = () => {
               <div>
                 <div className="text-xs text-[var(--text-muted)]">Last active</div>
                 <div className="mt-1 font-medium text-[var(--text-primary)]">
-                  {targetUser.lastActive}
+                  {targetUser.lastActive || 'Unavailable'}
                 </div>
               </div>
               <div>
@@ -304,62 +364,70 @@ export const AdminUserDetailPage: React.FC = () => {
                   className={`mt-1 font-medium capitalize ${
                     targetUser.status === 'active'
                       ? 'text-[var(--teal-strong)]'
-                      : 'text-[var(--coral-strong)]'
+                      : targetUser.status === 'inactive'
+                        ? 'text-[var(--coral-strong)]'
+                        : 'text-[var(--text-muted)]'
                   }`}
                 >
-                  {targetUser.status}
+                  {targetUser.status === 'unavailable' ? 'Unavailable' : targetUser.status}
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[var(--border-subtle)] grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="detail-role"
-                  className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5"
-                >
-                  Assigned role (prototype)
-                </label>
-                <select
-                  id="detail-role"
-                  value={targetUser.role}
-                  onChange={(e) => {
-                    updateAdminUser(targetUser.id, {
-                      role: e.target.value as AdminUserPrototype['role'],
-                    });
-                    showToast('Updated prototype role.', 'blue');
-                  }}
-                  className="w-full min-h-[40px] rounded-[11px] bg-[var(--surface-secondary)] border border-[var(--border-subtle)] px-3 text-sm text-[var(--text-primary)]"
-                >
-                  <option value="Member">Member</option>
-                  <option value="Facilitator">Facilitator</option>
-                  <option value="Admin">Admin</option>
-                </select>
+            {dataMode !== 'authenticated' ? (
+              <div className="pt-4 border-t border-[var(--border-subtle)] grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="detail-role"
+                    className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5"
+                  >
+                    Assigned role (prototype)
+                  </label>
+                  <select
+                    id="detail-role"
+                    value={targetUser.role}
+                    onChange={(e) => {
+                      updateAdminUser(targetUser.id, {
+                        role: e.target.value as AdminUserPrototype['role'],
+                      });
+                      showToast('Updated prototype role.', 'blue');
+                    }}
+                    className="w-full min-h-[40px] rounded-[11px] bg-[var(--surface-secondary)] border border-[var(--border-subtle)] px-3 text-sm text-[var(--text-primary)]"
+                  >
+                    <option value="Member">Member</option>
+                    <option value="Facilitator">Facilitator</option>
+                    <option value="Admin">Admin</option>
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="detail-status"
+                    className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5"
+                  >
+                    Account status (prototype)
+                  </label>
+                  <select
+                    id="detail-status"
+                    value={targetUser.status}
+                    onChange={(e) => {
+                      updateAdminUser(targetUser.id, {
+                        status: e.target.value as AdminUserPrototype['status'],
+                      });
+                      showToast('Updated prototype status.', 'blue');
+                    }}
+                    className="w-full min-h-[40px] rounded-[11px] bg-[var(--surface-secondary)] border border-[var(--border-subtle)] px-3 text-sm text-[var(--text-primary)]"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
               </div>
-
-              <div>
-                <label
-                  htmlFor="detail-status"
-                  className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5"
-                >
-                  Account status (prototype)
-                </label>
-                <select
-                  id="detail-status"
-                  value={targetUser.status}
-                  onChange={(e) => {
-                    updateAdminUser(targetUser.id, {
-                      status: e.target.value as AdminUserPrototype['status'],
-                    });
-                    showToast('Updated prototype status.', 'blue');
-                  }}
-                  className="w-full min-h-[40px] rounded-[11px] bg-[var(--surface-secondary)] border border-[var(--border-subtle)] px-3 text-sm text-[var(--text-primary)]"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
+            ) : (
+              <div className="pt-4 border-t border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]">
+                Account status, email, and last sign-in are unavailable from the current authorized client APIs.
+                Role is read from the protected user_roles table and is not editable here.
               </div>
-            </div>
+            )}
           </div>
 
           <div className="lg:col-span-5 rounded-[20px] bg-[var(--surface-blue)]/65 border border-[var(--border-subtle)] p-6 space-y-4">

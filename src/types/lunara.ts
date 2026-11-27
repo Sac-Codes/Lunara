@@ -69,11 +69,11 @@ export interface CheckInParameterConfig {
 export interface AdminUserPrototype {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   role: 'Member' | 'Facilitator' | 'Admin';
-  status: 'active' | 'inactive';
+  status: 'active' | 'inactive' | 'unavailable';
   joinedDate: string;
-  lastActive: string;
+  lastActive: string | null;
   preferredWindow?: 'morning' | 'evening' | 'anytime';
   checkIns?: CheckInEntry[];
   journals?: JournalEntry[];

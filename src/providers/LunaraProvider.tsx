@@ -13,12 +13,12 @@ import {
 } from '../data/wisdomAndAffirmations';
 import { lunaraStorage } from '../lib/storage';
 import { adminService } from '../services/adminService';
+import { affirmationService } from '../services/affirmationService';
 import { checkInService } from '../services/checkInService';
 import { journalService } from '../services/journalService';
 import { notificationService } from '../services/notificationService';
 import { preferencesService } from '../services/preferencesService';
 import { profileService } from '../services/profileService';
-import { roleService } from '../services/roleService';
 import { sharedWisdomService } from '../services/sharedWisdomService';
 import { wisdomService } from '../services/wisdomService';
 import { useAuth } from './AuthProvider';
@@ -88,13 +88,19 @@ interface LunaraContextValue {
   // Affirmations
   affirmations: AffirmationItem[];
   publishedAffirmations: AffirmationItem[];
+  affirmationLoading: boolean;
+  affirmationError: string | null;
+  refreshAffirmations: () => Promise<void>;
   favoriteAffirmationIds: string[];
   toggleFavoriteAffirmation: (id: string) => void;
   addAffirmation: (
     item: Omit<AffirmationItem, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>
-  ) => AffirmationItem;
-  updateAffirmation: (id: string, patch: Partial<AffirmationItem>) => void;
-  deleteAffirmation: (id: string) => void;
+  ) => Promise<AffirmationItem>;
+  updateAffirmation: (
+    id: string,
+    patch: Partial<Omit<AffirmationItem, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>>
+  ) => Promise<void>;
+  deleteAffirmation: (id: string) => Promise<void>;
 
   // Wisdom (Bhagavad Gita)
   wisdomEntries: WisdomEntry[];
@@ -144,6 +150,10 @@ interface LunaraContextValue {
 
   // Admin Prototype Directory & Audit Logs
   adminUsers: AdminUserPrototype[];
+  adminUserCount: number;
+  adminUsersLoading: boolean;
+  adminUsersError: string | null;
+  refreshAdminUsers: () => Promise<void>;
   addAdminUser: (user: Omit<AdminUserPrototype, 'id' | 'joinedDate' | 'lastActive'>) => AdminUserPrototype;
   updateAdminUser: (id: string, patch: Partial<AdminUserPrototype>) => void;
   auditLogs: AuditLogEntry[];
@@ -201,7 +211,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [parameters, setParameters] = useState<CheckInParameterConfig[]>(DEFAULT_CHECKIN_PARAMETERS);
   const [adminConfig, setAdminConfig] = useState<AdminSystemConfig>(DEFAULT_ADMIN_CONFIG);
 
-  const [affirmations, setAffirmations] = useState<AffirmationItem[]>(DEFAULT_AFFIRMATIONS);
+  const [affirmations, setAffirmations] = useState<AffirmationItem[]>([]);
+  const [affirmationLoading, setAffirmationLoading] = useState(false);
+  const [affirmationError, setAffirmationError] = useState<string | null>(null);
   const [favoriteAffirmationIds, setFavoriteAffirmationIds] = useState<string[]>([]);
   const [wisdomEntries, setWisdomEntries] = useState<WisdomEntry[]>([]);
   const [wisdomLoading, setWisdomLoading] = useState(false);
@@ -214,6 +226,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [notificationPrefs, setNotificationPrefs] =
     useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFS);
   const [adminUsers, setAdminUsers] = useState<AdminUserPrototype[]>([]);
+  const [adminUserCount, setAdminUserCount] = useState(0);
+  const [adminUsersLoading, setAdminUsersLoading] = useState(false);
+  const [adminUsersError, setAdminUsersError] = useState<string | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const showToastRef = useRef<(message: string, tone?: ToastMessage['tone']) => void>(() => { });
@@ -228,7 +243,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setProfile(EMPTY_PROFILE);
       setParameters(DEFAULT_CHECKIN_PARAMETERS);
       setAdminConfig(DEFAULT_ADMIN_CONFIG);
-      setAffirmations(DEFAULT_AFFIRMATIONS);
+      setAffirmations([]);
+      setAffirmationLoading(true);
+      setAffirmationError(null);
       setFavoriteAffirmationIds([]);
       setWisdomEntries([]);
       setWisdomLoading(true);
@@ -239,6 +256,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setNotifications([]);
       setNotificationPrefs(DEFAULT_NOTIFICATION_PREFS);
       setAdminUsers([]);
+      setAdminUserCount(0);
+      setAdminUsersLoading(true);
+      setAdminUsersError(null);
       setAuditLogs([]);
       return;
     }
@@ -250,6 +270,8 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setParameters(DEFAULT_CHECKIN_PARAMETERS);
       setAdminConfig(DEFAULT_ADMIN_CONFIG);
       setAffirmations(DEFAULT_AFFIRMATIONS);
+      setAffirmationLoading(false);
+      setAffirmationError(null);
       setFavoriteAffirmationIds([]);
       setWisdomEntries(DEFAULT_WISDOM_ENTRIES);
       setWisdomLoading(false);
@@ -260,6 +282,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setNotifications([]);
       setNotificationPrefs(DEFAULT_NOTIFICATION_PREFS);
       setAdminUsers([]);
+      setAdminUserCount(0);
+      setAdminUsersLoading(false);
+      setAdminUsersError(null);
       setAuditLogs([]);
       if (version === contextVersionRef.current) {
         setHydratedContextKey(targetContextKey);
@@ -278,7 +303,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
       setParameters(DEFAULT_CHECKIN_PARAMETERS);
       setAdminConfig(DEFAULT_ADMIN_CONFIG);
-      setAffirmations(DEFAULT_AFFIRMATIONS);
+      setAffirmations([]);
+      setAffirmationLoading(true);
+      setAffirmationError(null);
       setFavoriteAffirmationIds([]);
       setWisdomEntries([]);
       setWisdomLoading(true);
@@ -289,6 +316,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setNotifications([]);
       setNotificationPrefs(DEFAULT_NOTIFICATION_PREFS);
       setAdminUsers([]);
+      setAdminUserCount(0);
+      setAdminUsersLoading(user.role === 'admin');
+      setAdminUsersError(null);
       setAuditLogs([]);
 
       void (async () => {
@@ -299,6 +329,7 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             profileResult,
             preferencesResult,
             savedWisdomResult,
+            affirmationsResult,
             wisdomResult,
             notificationsResult,
           ] = await Promise.all([
@@ -307,6 +338,7 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             profileService.getOwnProfile(),
             preferencesService.getOwnPreferences(),
             wisdomService.listSavedIds(),
+            affirmationService.listAffirmations(),
             sharedWisdomService.listWisdom(),
             notificationService.listOwnNotifications(),
           ]);
@@ -331,6 +363,13 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             setNotificationPrefs(preferencesResult.data.notificationPrefs);
           }
           if (savedWisdomResult.ok) setSavedWisdomIds(savedWisdomResult.data);
+          if (affirmationsResult.ok) {
+            setAffirmations(affirmationsResult.data);
+            setAffirmationError(null);
+          } else {
+            setAffirmations([]);
+            setAffirmationError(affirmationsResult.error.message);
+          }
           if (wisdomResult.ok) {
             setWisdomEntries(wisdomResult.data);
             setWisdomError(null);
@@ -342,8 +381,15 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (user.role === 'admin') {
             const adminUsersResult = await adminService.listUsers();
             if (mountedRef.current && version === contextVersionRef.current) {
-              if (adminUsersResult.ok) setAdminUsers(adminUsersResult.data);
-              else showToastRef.current(adminUsersResult.error.message, 'amber');
+              if (adminUsersResult.ok) {
+                setAdminUsers(adminUsersResult.data.users);
+                setAdminUserCount(adminUsersResult.data.total);
+                setAdminUsersError(null);
+              } else {
+                setAdminUsersError(adminUsersResult.error.message);
+                showToastRef.current(adminUsersResult.error.message, 'amber');
+              }
+              setAdminUsersLoading(false);
             }
           }
 
@@ -353,6 +399,7 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             profileResult,
             preferencesResult,
             savedWisdomResult,
+            affirmationsResult,
             wisdomResult,
             notificationsResult,
           ].filter((result) => !result.ok);
@@ -364,12 +411,21 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             return;
           }
           setCheckIns([]);
+          setAffirmations([]);
+          setAffirmationError('Affirmations could not be loaded. Please retry.');
           setWisdomEntries([]);
           setWisdomError('Shared wisdom could not be loaded. Please retry.');
+          if (user.role === 'admin') {
+            setAdminUsers([]);
+            setAdminUserCount(0);
+            setAdminUsersLoading(false);
+            setAdminUsersError('The Admin directory could not be loaded. Please retry.');
+          }
           showToastRef.current('Could not load your saved check-ins.', 'amber');
         } finally {
           if (mountedRef.current && version === contextVersionRef.current) {
             setWisdomLoading(false);
+            setAffirmationLoading(false);
             setHydratedContextKey(targetContextKey);
           }
         }
@@ -387,6 +443,8 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setParameters(lunaraStorage.getParameters());
     setAdminConfig(lunaraStorage.getAdminConfig());
     setAffirmations(lunaraStorage.getAffirmations());
+    setAffirmationLoading(false);
+    setAffirmationError(null);
     setFavoriteAffirmationIds(lunaraStorage.getFavoriteAffirmationIds());
     setWisdomEntries(lunaraStorage.getWisdomEntries());
     setWisdomLoading(false);
@@ -396,7 +454,11 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setAnnouncements(lunaraStorage.getAnnouncements());
     setNotifications(lunaraStorage.getNotifications());
     setNotificationPrefs(lunaraStorage.getNotificationPrefs());
-    setAdminUsers(lunaraStorage.getAdminUsers());
+    const previewUsers = lunaraStorage.getAdminUsers();
+    setAdminUsers(previewUsers);
+    setAdminUserCount(previewUsers.length);
+    setAdminUsersLoading(false);
+    setAdminUsersError(null);
     setAuditLogs(lunaraStorage.getAuditLogs());
     if (version === contextVersionRef.current) {
       setHydratedContextKey(targetContextKey);
@@ -715,6 +777,60 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [affirmations]
   );
 
+  const refreshAffirmations = useCallback(async () => {
+    if (dataMode !== 'authenticated') return;
+    const version = contextVersionRef.current;
+    setAffirmationLoading(true);
+    setAffirmationError(null);
+    try {
+      const result = await affirmationService.listAffirmations();
+      if (!mountedRef.current || version !== contextVersionRef.current) return;
+      if (result.ok) setAffirmations(result.data);
+      else {
+        setAffirmations([]);
+        setAffirmationError(result.error.message);
+      }
+    } catch {
+      if (mountedRef.current && version === contextVersionRef.current) {
+        setAffirmations([]);
+        setAffirmationError('Affirmations could not be loaded. Please retry.');
+      }
+    } finally {
+      if (mountedRef.current && version === contextVersionRef.current) {
+        setAffirmationLoading(false);
+      }
+    }
+  }, [dataMode]);
+
+  const refreshAdminUsers = useCallback(async () => {
+    if (dataMode !== 'authenticated' || user?.role !== 'admin') return;
+    const version = contextVersionRef.current;
+    setAdminUsersLoading(true);
+    setAdminUsersError(null);
+    try {
+      const result = await adminService.listUsers();
+      if (!mountedRef.current || version !== contextVersionRef.current) return;
+      if (result.ok) {
+        setAdminUsers(result.data.users);
+        setAdminUserCount(result.data.total);
+      } else {
+        setAdminUsers([]);
+        setAdminUserCount(0);
+        setAdminUsersError(result.error.message);
+      }
+    } catch {
+      if (mountedRef.current && version === contextVersionRef.current) {
+        setAdminUsers([]);
+        setAdminUserCount(0);
+        setAdminUsersError('The Admin directory could not be loaded. Please retry.');
+      }
+    } finally {
+      if (mountedRef.current && version === contextVersionRef.current) {
+        setAdminUsersLoading(false);
+      }
+    }
+  }, [dataMode, user]);
+
   const toggleFavoriteAffirmation = useCallback(
     (id: string) => {
       if (dataMode === 'authenticated') {
@@ -738,7 +854,18 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 
   const addAffirmation = useCallback(
-    (item: Omit<AffirmationItem, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => {
+    async (item: Omit<AffirmationItem, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>) => {
+      if (dataMode === 'authenticated') {
+        const version = contextVersionRef.current;
+        const result = await affirmationService.addAffirmation(item);
+        if (!result.ok) throw new Error(result.error.message);
+        if (mountedRef.current && version === contextVersionRef.current) {
+          setAffirmations((prev) => [result.data, ...prev.filter((entry) => entry.id !== result.data.id)]);
+          setAffirmationError(null);
+        }
+        return result.data;
+      }
+      if (dataMode !== 'demo') throw new Error('Your shared affirmations are still initializing.');
       const now = new Date().toISOString();
       const created: AffirmationItem = {
         ...item,
@@ -755,11 +882,25 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       appendAuditLog('Created Affirmation', `Added "${item.category}" affirmation (${item.status}).`);
       return created;
     },
-    [user, appendAuditLog, dataMode, adminUsers]
+    [user, appendAuditLog, dataMode]
   );
 
   const updateAffirmation = useCallback(
-    (id: string, patch: Partial<AffirmationItem>) => {
+    async (
+      id: string,
+      patch: Partial<Omit<AffirmationItem, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>>
+    ) => {
+      if (dataMode === 'authenticated') {
+        const version = contextVersionRef.current;
+        const result = await affirmationService.updateAffirmation(id, patch);
+        if (!result.ok) throw new Error(result.error.message);
+        if (mountedRef.current && version === contextVersionRef.current) {
+          setAffirmations((prev) => prev.map((entry) => entry.id === result.data.id ? result.data : entry));
+          setAffirmationError(null);
+        }
+        return;
+      }
+      if (dataMode !== 'demo') throw new Error('Your shared affirmations are still initializing.');
       const now = new Date().toISOString();
       setAffirmations((prev) => {
         const next = prev.map((a) => (a.id === id ? { ...a, ...patch, updatedAt: now } : a));
@@ -772,7 +913,18 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 
   const deleteAffirmation = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      if (dataMode === 'authenticated') {
+        const version = contextVersionRef.current;
+        const result = await affirmationService.deleteAffirmation(id);
+        if (!result.ok) throw new Error(result.error.message);
+        if (mountedRef.current && version === contextVersionRef.current) {
+          setAffirmations((prev) => prev.filter((entry) => entry.id !== id));
+          setAffirmationError(null);
+        }
+        return;
+      }
+      if (dataMode !== 'demo') throw new Error('Your shared affirmations are still initializing.');
       setAffirmations((prev) => {
         const next = prev.filter((a) => a.id !== id);
         lunaraStorage.setAffirmations(next);
@@ -780,7 +932,7 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
       appendAuditLog('Removed Affirmation', `Deleted affirmation ${id}.`);
     },
-    [appendAuditLog]
+    [appendAuditLog, dataMode]
   );
 
   // Wisdom (Bhagavad Gita)
@@ -1242,18 +1394,8 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const updateAdminUser = useCallback(
     (id: string, patch: Partial<AdminUserPrototype>) => {
-      if (dataMode === 'authenticated' && patch.role) {
-        const backendRole = patch.role === 'Admin' ? 'admin' : 'user';
-        void roleService.setUserRole(id, backendRole).then((result) => {
-          if (!result.ok) {
-            showToastRef.current(result.error.message, 'amber');
-            return;
-          }
-          if (dataMode === 'authenticated') return;
-          setAdminUsers((prev) => prev.map((user) =>
-            user.id === id ? { ...user, role: patch.role as AdminUserPrototype['role'] } : user
-          ));
-        });
+      if (dataMode === 'authenticated') {
+        showToastRef.current('Account role and status changes are not available in this Admin panel.', 'blue');
         return;
       }
       setAdminUsers((prev) => {
@@ -1356,6 +1498,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       updateAdminConfig,
       affirmations,
       publishedAffirmations,
+      affirmationLoading,
+      affirmationError,
+      refreshAffirmations,
       favoriteAffirmationIds,
       toggleFavoriteAffirmation,
       addAffirmation,
@@ -1388,6 +1533,10 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       markAllNotificationsRead,
       deleteNotification,
       adminUsers,
+      adminUserCount,
+      adminUsersLoading,
+      adminUsersError,
+      refreshAdminUsers,
       addAdminUser,
       updateAdminUser,
       auditLogs,
@@ -1422,6 +1571,9 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       updateAdminConfig,
       affirmations,
       publishedAffirmations,
+      affirmationLoading,
+      affirmationError,
+      refreshAffirmations,
       favoriteAffirmationIds,
       toggleFavoriteAffirmation,
       addAffirmation,
@@ -1454,6 +1606,10 @@ export const LunaraProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       markAllNotificationsRead,
       deleteNotification,
       adminUsers,
+      adminUserCount,
+      adminUsersLoading,
+      adminUsersError,
+      refreshAdminUsers,
       addAdminUser,
       updateAdminUser,
       auditLogs,

@@ -4,7 +4,12 @@ import { Check, Download, FileCode, FileSpreadsheet, FileText, ShieldAlert } fro
 import { PageHeader } from '../../components/shared/PageHeader';
 import { Button } from '../../components/ui/Button';
 import { useLunara } from '../../providers/LunaraProvider';
-import { adminService, type AdminUserRecords } from '../../services/adminService';
+import {
+  adminService,
+  type AdminExportCategory,
+  type AdminUserRecords,
+  type AdminPreparedExport,
+} from '../../services/adminService';
 
 type ExportFormat = 'json' | 'csv' | 'html';
 type ExportRecordsState =
@@ -15,7 +20,7 @@ type ExportRecordsState =
 function escapeCsvCell(value: unknown): string {
   const raw = String(value ?? '');
   // Guard spreadsheets against formula injection
-  const safe = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
+  const safe = /^[\t\r ]*[=+\-@]/.test(raw) ? `'${raw}` : raw;
   return `"${safe.replace(/"/g, '""')}"`;
 }
 
@@ -29,7 +34,15 @@ function escapeHtml(value: string): string {
 
 export const AdminExportPage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const { adminUsers, appendAuditLog, showToast } = useLunara();
+  const {
+    dataMode,
+    adminUsers,
+    adminUserCount,
+    adminUsersLoading,
+    adminUsersError,
+    appendAuditLog,
+    showToast,
+  } = useLunara();
 
   const initialUserId = searchParams.get('userId') || adminUsers[0]?.id || '';
   const [selectedUserId, setSelectedUserId] = useState<string>(initialUserId);
@@ -48,11 +61,24 @@ export const AdminExportPage: React.FC = () => {
   });
 
   const [journalConfirmed, setJournalConfirmed] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [recordsRequest, setRecordsRequest] = useState(0);
   const [recordsState, setRecordsState] = useState<ExportRecordsState>({
     userId: '',
     status: 'loading',
   });
+
+  useEffect(() => {
+    if (adminUsers.length === 0) return;
+    const requestedUserId = searchParams.get('userId');
+    if (requestedUserId && selectedUserId === requestedUserId) {
+      return;
+    }
+    if (!requestedUserId && !adminUsers.some((user) => user.id === selectedUserId)) {
+      setSelectedUserId(adminUsers[0].id);
+    }
+  }, [adminUsers, searchParams, selectedUserId]);
 
   const selectedUser = useMemo(
     () => adminUsers.find((u) => u.id === selectedUserId),
@@ -64,6 +90,26 @@ export const AdminExportPage: React.FC = () => {
     if (!targetUserId) return;
 
     let active = true;
+    if (dataMode !== 'authenticated' && selectedUser) {
+      setRecordsState({
+        userId: targetUserId,
+        status: 'loaded',
+        data: {
+          checkIns: (selectedUser.checkIns ?? []).map((entry) => ({
+            ...entry,
+            createdAt: entry.updatedAt,
+          })),
+          journals: selectedUser.journals ?? [],
+          profile: null,
+          role: null,
+          preferences: null,
+        },
+      });
+      return () => {
+        active = false;
+      };
+    }
+
     setRecordsState({ userId: targetUserId, status: 'loading' });
 
     void adminService.getUserRecords(targetUserId).then((result) => {
@@ -89,7 +135,7 @@ export const AdminExportPage: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [targetUserId, recordsRequest]);
+  }, [dataMode, targetUserId, selectedUser, recordsRequest]);
 
   const currentRecordsState =
     !targetUserId
@@ -124,55 +170,150 @@ export const AdminExportPage: React.FC = () => {
     });
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!selectedUser || !recordsLoaded || !anyCategorySelected || blockedByJournalConfirm) return;
+    setExporting(true);
+    setExportError(null);
 
-    const stamp = new Date().toISOString().slice(0, 10);
-    const filenameBase = `lunara_user_export_${stamp}`;
-    const includedCategories = Object.entries(cats)
-      .filter(([, v]) => v)
-      .map(([k]) => k);
+    try {
+      const includedCategories = (Object.keys(cats) as AdminExportCategory[])
+        .filter((category) => cats[category]);
+      let preparedExport: AdminPreparedExport | null = null;
+      if (dataMode === 'authenticated') {
+        const result = await adminService.prepareUserExport({
+          targetUserId: selectedUser.id,
+          format,
+          categories: includedCategories,
+          startDate: startDate || null,
+          endDate: endDate || null,
+          confirmJournals: journalConfirmed,
+        });
+        if (!result.ok) throw new Error(result.error.message);
+        preparedExport = result.data;
+        if (
+          (cats.profile && !preparedExport.profile) ||
+          (cats.activitySummary && !preparedExport.activitySummary) ||
+          (cats.calendarSummary && !preparedExport.calendarDates)
+        ) {
+          throw new Error('The secure export response was incomplete. No download was produced.');
+        }
+      }
 
-    const checkInPayload = filteredData.checkIns.map((c) => ({
+      const preparedCheckIns = preparedExport
+        ? preparedExport.checkIns.map((entry) => ({
+            date: entry.date,
+            mood: entry.mood,
+            notes: entry.notes ?? '',
+            activities: entry.activities ?? [],
+            customActivities: entry.customActivities ?? [],
+            proudOf: entry.proudOf ?? '',
+            needs: entry.needs ?? [],
+            tomorrowIntention: entry.tomorrowIntention ?? '',
+            customValues: entry.customValues ?? {},
+            happiness: entry.happiness,
+            energy: entry.energy,
+            stress: entry.stress,
+            likes: entry.likes ?? [],
+            dislikes: entry.dislikes ?? [],
+          }))
+        : filteredData.checkIns;
+      const exportFilteredData = {
+        checkIns: preparedCheckIns,
+        journals: preparedExport ? preparedExport.journals : filteredData.journals,
+      };
+      const exportRecordsState = preparedExport
+        ? {
+            status: 'loaded' as const,
+            data: {
+              profile: preparedExport.profile
+                ? {
+                    display_name: preparedExport.profile.displayName,
+                    created_at: preparedExport.profile.createdAt,
+                    preferred_check_in_time: preparedExport.profile.preferredCheckInTime,
+                  }
+                : null,
+              role: preparedExport.profile?.role ?? null,
+              preferences: preparedExport.preferences,
+            },
+          }
+        : currentRecordsState;
+      const activitySummary = preparedExport?.activitySummary ?? {
+        totalCheckIns: exportFilteredData.checkIns.length,
+        totalJournals: exportFilteredData.journals.length,
+      };
+      const calendarDates = preparedExport?.calendarDates ?? {
+        checkInDates: exportFilteredData.checkIns.map((entry) => entry.date),
+        journalDates: exportFilteredData.journals.map((entry) => entry.date),
+      };
+      const stamp = new Date().toISOString().slice(0, 10);
+      const filenameBase = `lunara_user_export_${stamp}`;
+
+      const checkInPayload = exportFilteredData.checkIns.map((c) => ({
       date: c.date,
-      ...(cats.checkIns ? { mood: c.mood, notes: c.notes } : {}),
+      ...(cats.checkIns
+        ? {
+            mood: c.mood,
+            notes: c.notes,
+            activities: c.activities ?? [],
+            customActivities: c.customActivities ?? [],
+            proudOf: c.proudOf ?? '',
+            needs: c.needs ?? [],
+            tomorrowIntention: c.tomorrowIntention ?? '',
+            customValues: c.customValues ?? {},
+          }
+        : {}),
       ...(cats.metrics ? { happiness: c.happiness, energy: c.energy, stress: c.stress } : {}),
       ...(cats.likesDislikes ? { likes: c.likes, dislikes: c.dislikes } : {}),
     }));
 
-    const payload: Record<string, unknown> = {
+      const payload: Record<string, unknown> = {
       exportedAt: new Date().toISOString(),
-      source: 'Lunara Supabase',
+      source: dataMode === 'authenticated' ? 'Lunara Supabase' : 'Lunara Preview Mode',
       dateRange: { startDate: startDate || 'all', endDate: endDate || 'all' },
       ...(cats.profile
         ? {
             profile: {
               id: selectedUser.id,
-              name: selectedUser.name,
-              role: selectedUser.role,
-              joinedDate: selectedUser.joinedDate,
-              preferredWindow: selectedUser.preferredWindow || 'anytime',
+              displayName: exportRecordsState.status === 'loaded'
+                ? exportRecordsState.data.profile?.display_name || selectedUser.name
+                : selectedUser.name,
+              role: exportRecordsState.status === 'loaded'
+                ? exportRecordsState.data.role ?? selectedUser.role
+                : selectedUser.role,
+              createdAt: exportRecordsState.status === 'loaded'
+                ? exportRecordsState.data.profile?.created_at ?? null
+                : selectedUser.joinedDate,
+              preferredCheckInTime: exportRecordsState.status === 'loaded'
+                ? (exportRecordsState.data.profile?.preferred_check_in_time ?? selectedUser.preferredWindow ?? null)
+                : selectedUser.preferredWindow || 'anytime',
             },
+          }
+        : {}),
+      ...(cats.profile
+        ? {
+            preferences: exportRecordsState.status === 'loaded'
+              ? exportRecordsState.data.preferences
+              : null,
           }
         : {}),
       ...(cats.activitySummary
         ? {
             activitySummary: {
-              totalCheckIns: filteredData.checkIns.length,
-              totalJournals: filteredData.journals.length,
+              totalCheckIns: activitySummary.totalCheckIns,
+              totalJournals: activitySummary.totalJournals,
             },
           }
         : {}),
       ...(cats.calendarSummary
         ? {
             calendarDates: {
-              checkInDates: filteredData.checkIns.map((c) => c.date),
-              journalDates: filteredData.journals.map((j) => j.date),
+              checkInDates: calendarDates.checkInDates,
+              journalDates: calendarDates.journalDates,
             },
           }
         : {}),
       ...(cats.checkIns || cats.metrics || cats.likesDislikes ? { checkIns: checkInPayload } : {}),
-      ...(cats.journals ? { journals: filteredData.journals } : {}),
+      ...(cats.journals ? { journals: exportFilteredData.journals } : {}),
     };
 
     let content = '';
@@ -185,7 +326,7 @@ export const AdminExportPage: React.FC = () => {
       mime = 'text/csv;charset=utf-8';
       ext = 'csv';
       const rows: string[] = [
-        ['RecordType', 'Date', 'TitleOrMood', 'Happiness', 'Energy', 'Stress', 'DetailsOrNotes']
+        ['RecordType', 'Date', 'TitleOrMood', 'Happiness', 'Energy', 'Stress', 'DetailsOrNotes', 'AdditionalData']
           .map(escapeCsvCell)
           .join(','),
       ];
@@ -193,19 +334,58 @@ export const AdminExportPage: React.FC = () => {
         rows.push(
           [
             'Profile',
-            selectedUser.joinedDate,
-            selectedUser.name,
+            exportRecordsState.status === 'loaded'
+              ? exportRecordsState.data.profile?.created_at ?? ''
+              : selectedUser.joinedDate,
+            exportRecordsState.status === 'loaded'
+              ? exportRecordsState.data.profile?.display_name || selectedUser.name
+              : selectedUser.name,
             '',
             '',
             '',
-            selectedUser.role,
+            '',
+            JSON.stringify({
+              role: exportRecordsState.status === 'loaded'
+                ? exportRecordsState.data.role ?? selectedUser.role
+                : selectedUser.role,
+              preferredCheckInTime: exportRecordsState.status === 'loaded'
+                ? exportRecordsState.data.profile?.preferred_check_in_time ?? selectedUser.preferredWindow ?? null
+                : selectedUser.preferredWindow ?? null,
+              preferences: exportRecordsState.status === 'loaded'
+                ? exportRecordsState.data.preferences
+                : null,
+            }),
           ]
             .map(escapeCsvCell)
             .join(',')
         );
       }
+      if (cats.activitySummary) {
+        rows.push([
+          'Activity summary',
+          '',
+          '',
+          '',
+          '',
+          '',
+          `Check-ins: ${activitySummary.totalCheckIns}; journals: ${activitySummary.totalJournals}`,
+          '',
+        ].map(escapeCsvCell).join(','));
+      }
+      if (cats.calendarSummary) {
+        rows.push([
+          'Calendar dates',
+          '',
+          '',
+          '',
+          '',
+          '',
+          `Check-in dates: ${calendarDates.checkInDates.join('; ')}; Journal dates: ${calendarDates.journalDates.join('; ')}`,
+          '',
+        ].map(escapeCsvCell).join(','));
+      }
       if (cats.checkIns || cats.metrics || cats.likesDislikes) {
-        filteredData.checkIns.forEach((c) => {
+        exportFilteredData.checkIns.forEach((c) => {
           rows.push(
             [
               'Check-in',
@@ -221,6 +401,16 @@ export const AdminExportPage: React.FC = () => {
               ]
                 .filter(Boolean)
                 .join(' | '),
+              cats.checkIns
+              ? JSON.stringify({
+                  activities: c.activities ?? [],
+                  customActivities: c.customActivities ?? [],
+                  proudOf: c.proudOf ?? '',
+                  needs: c.needs ?? [],
+                  tomorrowIntention: c.tomorrowIntention ?? '',
+                  customValues: c.customValues ?? {},
+                })
+              : '',
             ]
               .map(escapeCsvCell)
               .join(',')
@@ -228,9 +418,9 @@ export const AdminExportPage: React.FC = () => {
         });
       }
       if (cats.journals) {
-        filteredData.journals.forEach((j) => {
+        exportFilteredData.journals.forEach((j) => {
           rows.push(
-            ['Journal', j.date, j.title, '', '', '', j.content].map(escapeCsvCell).join(',')
+            ['Journal', j.date, j.title, '', '', '', j.content, ''].map(escapeCsvCell).join(',')
           );
         });
       }
@@ -245,24 +435,62 @@ export const AdminExportPage: React.FC = () => {
 </head>
 <body>
 <h1>Lunara Reflection Export</h1>
-<p class="meta">Account: ${escapeHtml(selectedUser.name)} (${escapeHtml(selectedUser.role)}) · Exported ${stamp}</p>
+<p class="meta">Account: ${escapeHtml(selectedUser.name)} (${escapeHtml(selectedUser.role)}) · Date range: ${escapeHtml(startDate || 'all')} to ${escapeHtml(endDate || 'all')} · Exported ${stamp}</p>
+${
+  cats.profile
+    ? `<section><h2>Account profile &amp; preferences</h2><p><strong>Name:</strong> ${escapeHtml(exportRecordsState.status === 'loaded' ? exportRecordsState.data.profile?.display_name || selectedUser.name : selectedUser.name)}</p><p><strong>Role:</strong> ${escapeHtml(String(exportRecordsState.status === 'loaded' ? exportRecordsState.data.role ?? selectedUser.role : selectedUser.role))}</p><p><strong>Joined:</strong> ${escapeHtml(exportRecordsState.status === 'loaded' ? exportRecordsState.data.profile?.created_at ?? '' : selectedUser.joinedDate)}</p><p><strong>Preferred check-in time:</strong> ${escapeHtml(String(exportRecordsState.status === 'loaded' ? exportRecordsState.data.profile?.preferred_check_in_time ?? selectedUser.preferredWindow ?? 'Unavailable' : selectedUser.preferredWindow || 'anytime'))}</p><p><strong>Preferences:</strong> ${escapeHtml(JSON.stringify(exportRecordsState.status === 'loaded' ? exportRecordsState.data.preferences : null))}</p></section>`
+    : ''
+}
+${
+  cats.activitySummary
+    ? `<section><h2>Activity summary</h2><p>${activitySummary.totalCheckIns} check-ins · ${activitySummary.totalJournals} journal entries</p></section>`
+    : ''
+}
+${
+  cats.calendarSummary
+    ? `<section><h2>Calendar dates</h2><p>Check-ins: ${escapeHtml(calendarDates.checkInDates.join(', ') || 'None')}</p><p>Journal entries: ${escapeHtml(calendarDates.journalDates.join(', ') || 'None')}</p></section>`
+    : ''
+}
 ${
   cats.checkIns || cats.metrics || cats.likesDislikes
-    ? `<section><h2>Check-ins (${filteredData.checkIns.length})</h2>${filteredData.checkIns
-        .map(
-          (c) =>
-            `<p><strong>${escapeHtml(c.date)}</strong>${cats.checkIns && c.mood ? ` · Mood: ${escapeHtml(c.mood)}` : ''}${
-              cats.metrics
-                ? ` · Happiness ${c.happiness ?? '-'} / Energy ${c.energy ?? '-'} / Stress ${c.stress ?? '-'}`
-                : ''
-            }${cats.checkIns && c.notes ? `<br/>${escapeHtml(c.notes)}` : ''}</p>`
-        )
+    ? `<section><h2>Check-ins (${exportFilteredData.checkIns.length})</h2>${exportFilteredData.checkIns
+      .map((c) => {
+        const extraDetails = [
+          cats.checkIns && c.activities?.length
+            ? `Activities: ${escapeHtml(c.activities.join(', '))}`
+            : '',
+          cats.checkIns && c.customActivities?.length
+            ? `Custom activities: ${escapeHtml(c.customActivities.join(', '))}`
+            : '',
+          cats.checkIns && c.proudOf ? `Proud of: ${escapeHtml(c.proudOf)}` : '',
+          cats.checkIns && c.needs?.length ? `Needs: ${escapeHtml(c.needs.join(', '))}` : '',
+          cats.checkIns && c.tomorrowIntention
+            ? `Tomorrow’s intention: ${escapeHtml(c.tomorrowIntention)}`
+            : '',
+          cats.checkIns && c.customValues && Object.keys(c.customValues).length
+            ? `Custom values: ${escapeHtml(JSON.stringify(c.customValues))}`
+            : '',
+          cats.likesDislikes && c.likes.length
+            ? `Likes: ${escapeHtml(c.likes.join(', '))}`
+            : '',
+          cats.likesDislikes && c.dislikes.length
+            ? `Dislikes: ${escapeHtml(c.dislikes.join(', '))}`
+            : '',
+        ].filter(Boolean);
+        return `<p><strong>${escapeHtml(c.date)}</strong>${cats.checkIns && c.mood ? ` · Mood: ${escapeHtml(c.mood)}` : ''}${
+          cats.metrics
+            ? ` · Happiness ${c.happiness ?? '-'} / Energy ${c.energy ?? '-'} / Stress ${c.stress ?? '-'}`
+            : ''
+        }${cats.checkIns && c.notes ? `<br/>${escapeHtml(c.notes)}` : ''}${
+          extraDetails.length ? `<br/>${extraDetails.join('<br/>')}` : ''
+        }</p>`;
+      })
         .join('')}</section>`
     : ''
 }
 ${
   cats.journals
-    ? `<section><h2>Journal Entries (${filteredData.journals.length})</h2>${filteredData.journals
+    ? `<section><h2>Journal Entries (${exportFilteredData.journals.length})</h2>${exportFilteredData.journals
         .map(
           (j) =>
             `<article><h3>${escapeHtml(j.title)} (${escapeHtml(j.date)})</h3><p>${escapeHtml(j.content)}</p></article>`
@@ -281,13 +509,23 @@ ${
     a.click();
     URL.revokeObjectURL(url);
 
-    // Log audit event WITHOUT any journal prose
-    appendAuditLog(
-      'Exported User Data',
-      `Exported ${format.toUpperCase()} (${includedCategories.join(', ')}) for selected account.`,
-      selectedUser.name
-    );
+    if (dataMode !== 'authenticated') {
+      appendAuditLog(
+        'Exported User Data',
+        `Exported ${format.toUpperCase()} (${includedCategories.join(', ')}) for selected account.`,
+        selectedUser.name
+      );
+    }
     showToast(`Downloaded ${filenameBase}.${ext}.`, 'teal');
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'Export blocked because the secure audit/export operation failed. No download was produced.';
+      setExportError(message);
+      showToast('Export failed; no download was produced.', 'amber');
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -316,7 +554,7 @@ ${
                 className="w-full min-h-[42px] rounded-[11px] bg-[var(--surface-secondary)] border border-[var(--border-subtle)] px-3 text-sm text-[var(--text-primary)]"
               >
                 <option value="" disabled>
-                  Select a user…
+                  {adminUsersLoading ? 'Loading accounts…' : 'Select a user…'}
                 </option>
                 {adminUsers.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -324,6 +562,17 @@ ${
                   </option>
                 ))}
               </select>
+              {searchParams.get('userId') && !selectedUser && (
+                <p role={adminUsersError ? 'alert' : 'status'} className="mt-2 text-xs text-[var(--text-secondary)]">
+                  {adminUsersError
+                    ? adminUsersError
+                    : adminUsersLoading
+                      ? 'Resolving the selected account…'
+                      : adminUsers.length < adminUserCount
+                        ? 'The selected account is outside the latest 500 directory entries. Export is disabled because this account is not loaded.'
+                        : 'The selected account is not in the Admin directory.'}
+                </p>
+              )}
             </div>
 
             {currentRecordsState.status === 'loading' && (
@@ -400,8 +649,8 @@ ${
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {(
                 [
-                  { key: 'profile', label: 'User profile & role metadata' },
-                  { key: 'checkIns', label: 'Daily check-ins (mood & notes)' },
+                  { key: 'profile', label: 'User profile, role & preferences' },
+                  { key: 'checkIns', label: 'Daily check-ins and reflection details' },
                   { key: 'metrics', label: 'Happiness, energy & stress ratings' },
                   { key: 'likesDislikes', label: 'Likes & dislikes tags' },
                   { key: 'journals', label: 'Private journal entries (sensitive)' },
@@ -489,8 +738,9 @@ ${
             <Button
               variant="teal"
               size="md"
-              disabled={!selectedUser || !recordsLoaded || !anyCategorySelected || blockedByJournalConfirm}
-              onClick={handleDownload}
+              disabled={!selectedUser || !recordsLoaded || !anyCategorySelected || blockedByJournalConfirm || exporting}
+              loading={exporting}
+              onClick={() => void handleDownload()}
               leftIcon={<Download className="w-4 h-4" />}
             >
               Generate &amp; download export
@@ -508,7 +758,7 @@ ${
               <div className="rounded-[14px] bg-[var(--surface-main)] p-4">
                 <div className="text-xs text-[var(--text-muted)]">Selected account</div>
                 <div className="mt-1 font-medium text-[var(--text-primary)]">{selectedUser.name}</div>
-                <div className="text-xs text-[var(--text-secondary)]">{selectedUser.email}</div>
+                <div className="text-xs text-[var(--text-secondary)]">{selectedUser.email || 'Email unavailable'}</div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -536,11 +786,14 @@ ${
                   <span>Export privacy safeguard</span>
                 </div>
                 <p>
-                  Authenticated export activity is not persisted to an audit log yet. Journal text is not included in export activity metadata.
+                  {dataMode === 'authenticated'
+                    ? 'Export data is released only after its request is recorded; audit metadata excludes check-in and journal text.'
+                    : 'Preview export actions are recorded only in local preview history.'}
                 </p>
               </div>
             </div>
           )}
+          {exportError && <p role="alert" className="text-sm text-[var(--amber-strong)]">{exportError}</p>}
         </aside>
       </div>
     </div>

@@ -32,6 +32,9 @@ export const AdminContentPage: React.FC = () => {
     addAffirmation,
     updateAffirmation,
     deleteAffirmation,
+    affirmationLoading,
+    affirmationError,
+    refreshAffirmations,
     wisdomEntries,
     addWisdom,
     updateWisdom,
@@ -59,6 +62,8 @@ export const AdminContentPage: React.FC = () => {
   const [affCategory, setAffCategory] = useState<AffirmationCategory>('Calm');
   const [affStatus, setAffStatus] = useState<AffirmationItem['status']>('published');
   const [deleteAffId, setDeleteAffId] = useState<string | null>(null);
+  const [affirmationMutationPending, setAffirmationMutationPending] = useState(false);
+  const affirmationMutationLock = useRef(false);
 
   // Wisdom state
   const [wisSearch, setWisSearch] = useState('');
@@ -117,25 +122,79 @@ export const AdminContentPage: React.FC = () => {
     setAffStatus('published');
   };
 
-  const handleSaveAffirmation = (e: React.FormEvent) => {
+  const handleSaveAffirmation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!affText.trim()) return;
-    if (editAffId) {
-      updateAffirmation(editAffId, {
-        text: affText.trim(),
-        category: affCategory,
-        status: affStatus,
-      });
-      showToast('Affirmation updated.', 'lavender');
-    } else {
-      addAffirmation({
-        text: affText.trim(),
-        category: affCategory,
-        status: affStatus,
-      });
-      showToast('Affirmation added.', 'lavender');
+    if (!affText.trim() || affirmationMutationLock.current) return;
+    affirmationMutationLock.current = true;
+    setAffirmationMutationPending(true);
+    try {
+      if (editAffId) {
+        await updateAffirmation(editAffId, {
+          text: affText.trim(),
+          category: affCategory,
+          status: affStatus,
+        });
+        showToast('Affirmation updated.', 'lavender');
+      } else {
+        await addAffirmation({
+          text: affText.trim(),
+          category: affCategory,
+          status: affStatus,
+        });
+        showToast('Affirmation added.', 'lavender');
+      }
+      resetAffForm();
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Could not save the affirmation.',
+        'amber'
+      );
+    } finally {
+      affirmationMutationLock.current = false;
+      setAffirmationMutationPending(false);
     }
-    resetAffForm();
+  };
+
+  const handleDeleteAffirmation = async () => {
+    if (!deleteAffId || affirmationMutationLock.current) return;
+    affirmationMutationLock.current = true;
+    setAffirmationMutationPending(true);
+    try {
+      await deleteAffirmation(deleteAffId);
+      showToast('Affirmation removed.', 'lavender');
+      setDeleteAffId(null);
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Could not delete the affirmation.',
+        'amber'
+      );
+    } finally {
+      affirmationMutationLock.current = false;
+      setAffirmationMutationPending(false);
+    }
+  };
+
+  const handleToggleAffirmationStatus = async (affirmation: AffirmationItem) => {
+    if (affirmationMutationLock.current) return;
+    affirmationMutationLock.current = true;
+    setAffirmationMutationPending(true);
+    try {
+      await updateAffirmation(affirmation.id, {
+        status: affirmation.status === 'published' ? 'inactive' : 'published',
+      });
+      showToast(
+        affirmation.status === 'published' ? 'Affirmation paused.' : 'Affirmation published.',
+        'lavender'
+      );
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Could not update the affirmation.',
+        'amber'
+      );
+    } finally {
+      affirmationMutationLock.current = false;
+      setAffirmationMutationPending(false);
+    }
   };
 
   const resetWisForm = () => {
@@ -357,7 +416,36 @@ export const AdminContentPage: React.FC = () => {
               </div>
             </div>
 
+            {affirmationLoading && (
+              <p role="status" aria-live="polite" className="px-4 py-3 text-sm text-[var(--text-secondary)]">
+                Loading shared affirmations…
+              </p>
+            )}
+            {affirmationError && (
+              <div role="alert" className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-[var(--surface-amber)]/45">
+                <p className="text-sm text-[var(--text-primary)]">{affirmationError}</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={affirmationLoading}
+                  onClick={() => void refreshAffirmations()}
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
+            {!affirmationLoading && !affirmationError && affirmations.length === 0 && (
+              <p className="p-6 text-center text-sm text-[var(--text-secondary)]">
+                The shared affirmations library is empty.
+              </p>
+            )}
+
             <div className="divide-y divide-[var(--border-subtle)]">
+              {affirmations.length > 0 && filteredAffirmations.length === 0 && (
+                <p className="p-6 text-center text-sm text-[var(--text-secondary)]">
+                  No affirmations match these filters.
+                </p>
+              )}
               {filteredAffirmations.map((aff) => (
                 <div key={aff.id} className="p-4 sm:p-5 flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -384,11 +472,8 @@ export const AdminContentPage: React.FC = () => {
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       type="button"
-                      onClick={() =>
-                        updateAffirmation(aff.id, {
-                          status: aff.status === 'published' ? 'inactive' : 'published',
-                        })
-                      }
+                      disabled={affirmationMutationPending}
+                      onClick={() => void handleToggleAffirmationStatus(aff)}
                       className="min-h-[30px] px-2.5 rounded-[8px] bg-[var(--surface-secondary)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                     >
                       {aff.status === 'published' ? 'Pause' : 'Publish'}
@@ -396,6 +481,7 @@ export const AdminContentPage: React.FC = () => {
                     <IconButton
                       label="Edit affirmation"
                       size="sm"
+                      disabled={affirmationMutationPending}
                       onClick={() => {
                         setEditAffId(aff.id);
                         setAffText(aff.text);
@@ -408,6 +494,7 @@ export const AdminContentPage: React.FC = () => {
                     <IconButton
                       label="Delete affirmation"
                       size="sm"
+                      disabled={affirmationMutationPending}
                       onClick={() => setDeleteAffId(aff.id)}
                     >
                       <Trash2 className="w-3.5 h-3.5 text-[var(--coral-strong)]" />
@@ -498,7 +585,14 @@ export const AdminContentPage: React.FC = () => {
             )}
 
             <div className="flex items-center gap-2">
-              <Button type="submit" variant="primary" size="sm" leftIcon={<Check className="w-4 h-4" />}>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                disabled={affirmationMutationPending}
+                loading={affirmationMutationPending}
+                leftIcon={<Check className="w-4 h-4" />}
+              >
                 {editAffId ? 'Save changes' : 'Add affirmation'}
               </Button>
               {editAffId && (
@@ -895,15 +989,9 @@ export const AdminContentPage: React.FC = () => {
         open={deleteAffId !== null}
         title="Delete this affirmation?"
         description="This removes the affirmation from the curated catalog."
-        confirmLabel="Delete"
+        confirmLabel={affirmationMutationPending ? 'Deleting…' : 'Delete'}
         destructive
-        onConfirm={() => {
-          if (deleteAffId) {
-            deleteAffirmation(deleteAffId);
-            showToast('Affirmation removed.', 'lavender');
-          }
-          setDeleteAffId(null);
-        }}
+        onConfirm={() => void handleDeleteAffirmation()}
         onCancel={() => setDeleteAffId(null)}
       />
 

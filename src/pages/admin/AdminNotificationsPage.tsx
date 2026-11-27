@@ -56,7 +56,9 @@ export const AdminNotificationsPage: React.FC = () => {
         message: message.trim(),
         category,
         targetUserId: targetUser ? targetUser.id : undefined,
-        targetUserLabel: targetUser ? `${targetUser.name} (${targetUser.email})` : 'All Lunara users',
+        targetUserLabel: targetUser
+          ? `${targetUser.name}${targetUser.email ? ` (${targetUser.email})` : ''}`
+          : 'All Lunara users',
         targetUserName: targetUser?.name,
       });
       showToast(

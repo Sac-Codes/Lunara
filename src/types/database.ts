@@ -1,4 +1,6 @@
 import type {
+  AffirmationCategory,
+  AffirmationItem,
   MoodId,
   NotificationCategory,
   ThemeMode,
@@ -50,6 +52,42 @@ export interface Database {
           daily_reminder_enabled?: boolean;
           reminder_time?: string;
           show_greeting_prompts?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      affirmations: {
+        Row: {
+          id: string;
+          text: string;
+          category: AffirmationCategory;
+          status: AffirmationItem['status'];
+          created_by: string;
+          scheduled_date: string | null;
+          priority: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          text: string;
+          category: AffirmationCategory;
+          status?: AffirmationItem['status'];
+          created_by: string;
+          scheduled_date?: string | null;
+          priority?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          text?: string;
+          category?: AffirmationCategory;
+          status?: AffirmationItem['status'];
+          created_by?: string;
+          scheduled_date?: string | null;
+          priority?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -262,6 +300,42 @@ export interface Database {
         };
         Relationships: [];
       };
+      audit_logs: {
+        Row: {
+          id: string;
+          actor_user_id: string;
+          actor_role: 'admin';
+          action: string;
+          target_user_id: string | null;
+          resource_type: string;
+          resource_id: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          actor_user_id: string;
+          actor_role: 'admin';
+          action: string;
+          target_user_id?: string | null;
+          resource_type: string;
+          resource_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          actor_user_id?: string;
+          actor_role?: 'admin';
+          action?: string;
+          target_user_id?: string | null;
+          resource_type?: string;
+          resource_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       user_preferences: {
         Row: {
           user_id: string;
@@ -343,6 +417,31 @@ export interface Database {
       is_admin: {
         Args: Record<string, never>;
         Returns: boolean;
+      };
+      admin_get_user_records_audited: {
+        Args: {
+          p_target_user_id: string;
+        };
+        Returns: Json;
+      };
+      admin_prepare_user_export_audited: {
+        Args: {
+          p_target_user_id: string;
+          p_format: 'json' | 'csv' | 'html';
+          p_categories: Array<
+            | 'profile'
+            | 'checkIns'
+            | 'metrics'
+            | 'likesDislikes'
+            | 'journals'
+            | 'activitySummary'
+            | 'calendarSummary'
+          >;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_confirm_journals?: boolean;
+        };
+        Returns: Json;
       };
     };
     Enums: Record<string, never>;
